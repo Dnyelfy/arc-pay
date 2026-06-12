@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ArcPay — USDC-native payments on Arc</title>
+<meta name="description" content="Send USDC, create payment links, split bills and track gas — all native on Arc Testnet, ~$0.01 per tx."/>
+<meta property="og:title" content="ArcPay — USDC-native payments on Arc"/>
+<meta property="og:description" content="Payment links, split payments, live gas tracker & on-chain receipts on Arc Testnet."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0a0a0f;--bg2:#111118;--bg3:#16161f;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#f0eff8;--muted:#7c7b8f;--dim:#3a394a;
+  --accent:#5b6bff;--accent2:#7c4dff;--accent-glow:rgba(91,107,255,0.18);
+  --green:#1de9b6;--green-bg:rgba(29,233,182,0.08);--green-border:rgba(29,233,182,0.25);
+  --amber:#ffc107;--amber-bg:rgba(255,193,7,0.08);
+  --red:#ff5252;--red-bg:rgba(255,82,82,0.08);
+  --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{background:var(--bg);color:var(--text);font-family:var(--font);}
+body{min-height:100vh;display:flex;flex-direction:column;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.5;}
+.wrap{width:min(860px,92vw);margin:0 auto;position:relative;z-index:1;}
+header{padding:20px 0;border-bottom:0.5px solid var(--border);position:sticky;top:0;background:rgba(10,10,15,0.88);backdrop-filter:blur(20px);z-index:100;}
+header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.logo{font-weight:800;font-size:20px;letter-spacing:-0.5px;}
+.logo em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hright{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.pill{font-family:var(--mono);font-size:11.5px;padding:6px 12px;border:0.5px solid var(--border2);border-radius:99px;color:var(--muted);}
+.pill.gas{color:var(--green);border-color:var(--green-border);}
+.connect-btn{font-family:var(--font);font-weight:700;font-size:13px;padding:9px 16px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;transition:all .2s;}
+.connect-btn:hover{border-color:var(--accent);box-shadow:0 0 18px var(--accent-glow);}
+.connect-btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));border:none;}
+.connect-btn:disabled{opacity:0.5;cursor:wait;}
+.hero{padding:42px 0 10px;}
+.hero h1{font-size:clamp(28px,5vw,44px);font-weight:800;line-height:1.08;letter-spacing:-1px;}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hero p{color:var(--muted);font-size:14.5px;margin-top:12px;max-width:560px;line-height:1.6;}
+.tabs{display:flex;gap:4px;margin:28px 0 18px;border:0.5px solid var(--border);border-radius:14px;padding:4px;background:var(--bg2);width:fit-content;max-width:100%;overflow-x:auto;}
+.tab-btn{font-family:var(--font);font-weight:700;font-size:13px;padding:9px 16px;border-radius:10px;border:none;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;}
+.tab-btn.active{background:var(--bg3);color:var(--text);box-shadow:inset 0 0 0 0.5px var(--border2);}
+.section{display:none;padding-bottom:50px;}
+.section.active{display:block;animation:fadein .25s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:22px;margin-bottom:14px;}
+.card h2{font-size:16px;font-weight:700;margin-bottom:14px;}
+label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:14px 0 6px;}
+input,textarea{width:100%;font-family:var(--mono);font-size:14px;padding:12px 14px;border-radius:10px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);outline:none;transition:border .2s;}
+input:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:90px;line-height:1.7;}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+.hint{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:8px;line-height:1.6;}
+.status{font-family:var(--mono);font-size:12px;margin-top:12px;color:var(--muted);min-height:16px;word-break:break-all;}
+.status.ok{color:var(--green);}
+.status.err{color:var(--red);}
+.status a{color:var(--accent);}
+/* receipt — ArcPay'in imzası */
+.receipt{background:var(--bg3);border:0.5px dashed var(--border2);border-radius:4px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;position:relative;margin-top:14px;}
+.receipt::before,.receipt::after{content:'';position:absolute;left:0;right:0;height:8px;background-image:radial-gradient(circle at 8px 0px, var(--bg) 5px, transparent 5px);background-size:16px 8px;}
+.receipt::before{top:-1px;}
+.receipt::after{bottom:-1px;transform:rotate(180deg);}
+.receipt .r-line{display:flex;justify-content:space-between;gap:12px;padding:5px 0;color:var(--muted);}
+.receipt .r-line b{color:var(--text);font-weight:500;text-align:right;word-break:break-all;}
+.receipt .r-amt{font-size:22px;color:var(--green);text-align:center;padding:10px 0;letter-spacing:1px;}
+.receipt .r-sep{border-top:1px dashed var(--border2);margin:8px 0;}
+.receipt .r-foot{text-align:center;color:var(--dim);font-size:10.5px;letter-spacing:0.15em;text-transform:uppercase;padding-top:8px;}
+.gasbig{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.gasbig b{font-size:clamp(34px,7vw,54px);font-family:var(--mono);font-weight:500;color:var(--green);}
+.gasbig span{font-family:var(--mono);font-size:13px;color:var(--muted);}
+.preset{font-family:var(--mono);font-size:11.5px;padding:7px 12px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;}
+.preset.active{border-color:var(--green-border);color:var(--green);background:var(--green-bg);}
+.cost{font-family:var(--mono);font-size:13px;color:var(--text);margin-top:14px;line-height:1.9;}
+.cost b{color:var(--green);}
+.empty{font-family:var(--mono);font-size:12.5px;color:var(--dim);padding:18px 0;text-align:center;}
+footer{margin-top:auto;border-top:0.5px solid var(--border);padding:20px 0;font-family:var(--mono);font-size:11.5px;color:var(--dim);}
+footer a{color:var(--muted);text-decoration:none;}
+footer a:hover{color:var(--accent);}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg3);border:0.5px solid var(--border2);border-radius:12px;padding:12px 20px;font-family:var(--mono);font-size:12.5px;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;}
+.toast.show{opacity:1;}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">Arc<em>Pay</em></div>
+    <div class="hright">
+      <span class="pill gas" id="gasPill">⛽ — gwei</span>
+      <span class="pill" id="balPill" style="display:none;"></span>
+      <button class="connect-btn primary" id="connBtn" onclick="connect()">Connect wallet</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Money moves like a message.<br/><em>USDC-native, on Arc.</em></h1>
+    <p>Send a payment, drop someone a pay-link, split a bill across 20 wallets — every transfer lands as an on-chain receipt for about a cent. Gas is USDC here; what you see is what you pay.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="go('pay',this)">💸 Pay & Link</button>
+    <button class="tab-btn" onclick="go('split',this)">🔀 Split</button>
+    <button class="tab-btn" onclick="go('recall',this)">⏳ Recallable</button>
+    <button class="tab-btn" onclick="go('gas',this)">⛽ Gas Tracker</button>
+    <button class="tab-btn" onclick="go('history',this)">🧾 Receipts</button>
+  </div>
+
+  <!-- PAY -->
+  <div class="section active" id="sec-pay">
+    <div class="card" id="incomingCard" style="display:none;border-color:var(--green-border);">
+      <h2>📥 Payment request</h2>
+      <div class="receipt" id="incomingReceipt"></div>
+      <div class="row"><button class="connect-btn primary" onclick="payIncoming()">Pay this request</button></div>
+      <div class="status" id="incomingStatus"></div>
+    </div>
+    <div class="card">
+      <h2>Send a payment</h2>
+      <label>Recipient address</label>
+      <input id="payTo" placeholder="0x…" spellcheck="false"/>
+      <label>Amount (USDC)</label>
+      <input id="payAmt" placeholder="1.50" inputmode="decimal"/>
+      <label>Note — written on-chain with the payment</label>
+      <input id="payNote" placeholder="coffee ☕ / invoice #42 / gm" maxlength="120"/>
+      <div class="row">
+        <button class="connect-btn primary" onclick="sendPay()">Send payment</button>
+        <button class="connect-btn" onclick="makeLink()">Create pay-link instead 🔗</button>
+      </div>
+      <div class="status" id="payStatus"></div>
+      <div class="hint">A pay-link prefills this form for whoever opens it — share it anywhere, they pay in one tap.</div>
+    </div>
+  </div>
+
+  <!-- SPLIT -->
+  <div class="section" id="sec-split">
+    <div class="card">
+      <h2>Split a payment</h2>
+      <label>Recipients — one address per line (max 20)</label>
+      <textarea id="splitTo" placeholder="0xabc…&#10;0xdef…&#10;0x123…" spellcheck="false"></textarea>
+      <label>Total amount to split (USDC)</label>
+      <input id="splitAmt" placeholder="10.00" inputmode="decimal"/>
+      <label>Note</label>
+      <input id="splitNote" placeholder="team payout / dinner split" maxlength="120"/>
+      <div class="cost" id="splitPreview"></div>
+      <div class="row"><button class="connect-btn primary" onclick="sendSplit()">Split & send</button></div>
+      <div class="status" id="splitStatus"></div>
+      <div class="hint">One transaction, equal shares, rounding dust returns to you. Each recipient gets their own on-chain receipt event.</div>
+    </div>
+  </div>
+
+  <!-- RECALLABLE -->
+  <div class="section" id="sec-recall">
+    <div class="card">
+      <h2>Send a recallable payment</h2>
+      <p class="hint" style="margin:0 0 4px;">Inspired by Miden's P2IDR notes: the recipient can claim any time, but if they don't, you can pull the funds back after the window closes. No more "wrong address" panic.</p>
+      <label>Recipient address</label>
+      <input id="rcTo" placeholder="0x…" spellcheck="false"/>
+      <label>Amount (USDC)</label>
+      <input id="rcAmt" placeholder="1.00" inputmode="decimal"/>
+      <label>Recall window — you can take it back after</label>
+      <div class="row" style="margin-top:4px;">
+        <button class="preset" data-s="300" onclick="pickWindow(this)">5 min</button>
+        <button class="preset active" data-s="3600" onclick="pickWindow(this)">1 hour</button>
+        <button class="preset" data-s="86400" onclick="pickWindow(this)">24 hours</button>
+        <button class="preset" data-s="604800" onclick="pickWindow(this)">7 days</button>
+      </div>
+      <label>Note</label>
+      <input id="rcNote" placeholder="claim me before I change my mind ⏳" maxlength="120"/>
+      <div class="row"><button class="connect-btn primary" onclick="sendRecallable()">Send recallable</button></div>
+      <div class="status" id="rcStatus"></div>
+    </div>
+    <div class="card">
+      <h2>Your recallable payments</h2>
+      <div class="row" style="margin-top:0;"><button class="connect-btn" onclick="loadRecalls()">↻ Load from chain</button></div>
+      <div id="rcList"><p class="empty">Connect & load — outgoing payments show a recall countdown, incoming ones a claim button.</p></div>
+    </div>
+  </div>
+
+  <!-- GAS -->
+  <div class="section" id="sec-gas">
+    <div class="card">
+      <h2>Live gas — Arc Testnet</h2>
+      <div class="gasbig"><b id="gasNum">—</b><span>gwei · refreshes every 15s</span></div>
+      <div class="hint" id="gasNote">Arc burns USDC as gas — predictable, dollar-denominated fees.</div>
+    </div>
+    <div class="card">
+      <h2>What will my transaction cost?</h2>
+      <div class="row" style="margin-top:4px;">
+        <button class="preset active" data-g="21000" onclick="pickPreset(this)">Transfer · 21k</button>
+        <button class="preset" data-g="50000" onclick="pickPreset(this)">Token tx · 50k</button>
+        <button class="preset" data-g="120000" onclick="pickPreset(this)">dApp call · 120k</button>
+        <button class="preset" data-g="600000" onclick="pickPreset(this)">Deploy · 600k</button>
+      </div>
+      <label>Or custom gas limit</label>
+      <input id="gasLimit" value="21000" inputmode="numeric"/>
+      <div class="cost" id="gasCost">—</div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="section" id="sec-history">
+    <div class="card">
+      <h2>Your receipts</h2>
+      <div class="row" style="margin-top:0;"><button class="connect-btn" onclick="loadHistory()">↻ Load from chain</button></div>
+      <div id="histList"><p class="empty">Connect your wallet and load — every ArcPay payment you sent or received, straight from the chain.</p></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    Built by <a href="https://x.com/Dnyelfy" target="_blank" rel="noreferrer">@Dnyelfy</a> · contract <a id="cLink" href="#" target="_blank" rel="noreferrer">ArcPay</a> · Arc Testnet<br/>
+    More Arc tools → <a href="https://arc-wallet-check.vercel.app" target="_blank" rel="noreferrer">Wallet Check</a> · <a href="https://arcvote-one.vercel.app/arc-dapp.html" target="_blank" rel="noreferrer">Quest Hub</a> · <a href="https://arc-agent-forge.vercel.app" target="_blank" rel="noreferrer">Agent Forge</a>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<script>
+const ARCPAY = '0x418E2c81b0E90C98780494c62C73452657CA979b'; // ArcPay V2
+const RPC = 'https://rpc.testnet.arc.network';
+const CHAIN_ID = 5042002;
+const SCAN = 'https://testnet.arcscan.app';
+const ABI = [
+  'function pay(address to, string note) payable',
+  'function splitPay(address[] to, string note) payable',
+  'function payRecallable(address to, uint256 recallSeconds, string note) payable returns (uint256)',
+  'function claim(uint256 id)',
+  'function recall(uint256 id)',
+  'function rpays(uint256) view returns (address from, address to, uint256 amount, uint256 recallAfter, uint8 status)',
+  'event PaymentSent(address indexed from, address indexed to, uint256 amount, string note)',
+  'event RecallableCreated(uint256 indexed id, address indexed from, address indexed to, uint256 amount, uint256 recallAfter, string note)',
+  'event Claimed(uint256 indexed id, address indexed to, uint256 amount)',
+  'event Recalled(uint256 indexed id, address indexed from, uint256 amount)'
+];
+const $ = id => document.getElementById(id);
+const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '';
+let provider = null, signer = null, userAddress = null;
+const readProvider = new ethers.JsonRpcProvider(RPC);
+const iface = new ethers.Interface(ABI);
+
+document.getElementById('cLink').href = `${SCAN}/address/${ARCPAY}`;
+
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200); }
+function setStatus(id,msg,cls){ const s=$(id); s.innerHTML=msg||''; s.className='status'+(cls?' '+cls:''); }
+
+function go(name, btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  $('sec-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+async function connect(){
+  if(!window.ethereum){ toast('MetaMask not found'); return; }
+  try{
+    provider = new ethers.BrowserProvider(window.ethereum);
+    const net = await provider.getNetwork();
+    if(Number(net.chainId) !== CHAIN_ID){
+      try{
+        await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x'+CHAIN_ID.toString(16) }] });
+      }catch(e){
+        if(e.code === 4902){
+          await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{
+            chainId:'0x'+CHAIN_ID.toString(16), chainName:'Arc Testnet',
+            nativeCurrency:{ name:'USDC', symbol:'USDC', decimals:18 },
+            rpcUrls:[RPC], blockExplorerUrls:[SCAN]
+          }]});
+        } else throw e;
+      }
+      provider = new ethers.BrowserProvider(window.ethereum);
+    }
+    signer = await provider.getSigner();
+    userAddress = await signer.getAddress();
+    $('connBtn').textContent = short(userAddress) + ' ✕';
+    $('connBtn').onclick = disconnect;
+    $('connBtn').title = 'Disconnect';
+    const bal = await provider.getBalance(userAddress);
+    $('balPill').textContent = Number(ethers.formatEther(bal)).toFixed(2) + ' USDC';
+    $('balPill').style.display = '';
+    toast('✓ Connected');
+  }catch(e){ toast('Connect failed: ' + (e.shortMessage||e.message||'').slice(0,60)); }
+}
+
+async function disconnect(){
+  try{ await window.ethereum?.request({ method:'wallet_revokePermissions', params:[{ eth_accounts:{} }] }); }catch(_){}
+  provider = null; signer = null; userAddress = null;
+  $('connBtn').textContent = 'Connect wallet';
+  $('connBtn').onclick = connect;
+  $('connBtn').title = '';
+  $('balPill').style.display = 'none';
+  $('histList').innerHTML = '<p class="empty">Connect your wallet and load — every ArcPay payment you sent or received, straight from the chain.</p>';
+  $('rcList').innerHTML = '<p class="empty">Connect & load — outgoing payments show a recall countdown, incoming ones a claim button.</p>';
+  rcItems = [];
+  toast('Disconnected');
+}
+window.ethereum?.on?.('accountsChanged', accs => { accs.length ? connect() : disconnect(); });
+
+function validAddr(a){ try{ return ethers.getAddress(a.trim()); }catch{ return null; } }
+
+async function sendPay(toOverride, amtOverride, noteOverride, statusId){
+  const sid = statusId || 'payStatus';
+  if(!signer){ await connect(); if(!signer) return; }
+  const to = validAddr(toOverride ?? $('payTo').value);
+  const amt = (amtOverride ?? $('payAmt').value).toString().trim().replace(',','.');
+  const note = (noteOverride ?? $('payNote').value).trim();
+  if(!to){ setStatus(sid,'Enter a valid recipient address.','err'); return; }
+  if(!(parseFloat(amt) > 0)){ setStatus(sid,'Enter an amount above zero.','err'); return; }
+  try{
+    setStatus(sid,'Waiting for wallet confirmation…');
+    const c = new ethers.Contract(ARCPAY, ABI, signer);
+    const tx = await c.pay(to, note, { value: ethers.parseEther(amt) });
+    setStatus(sid,'⏳ Sending… ' + short(tx.hash));
+    const rc = await tx.wait();
+    setStatus(sid,`✅ Paid ${amt} USDC to ${short(to)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view receipt ↗</a>`,'ok');
+    toast('✓ Payment sent');
+  }catch(e){ setStatus(sid,'Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
+}
+
+function makeLink(){
+  const to = validAddr($('payTo').value);
+  const amt = $('payAmt').value.trim().replace(',','.');
+  const note = $('payNote').value.trim();
+  if(!to){ setStatus('payStatus','Pay-link needs a valid recipient address.','err'); return; }
+  if(!(parseFloat(amt) > 0)){ setStatus('payStatus','Pay-link needs an amount.','err'); return; }
+  const u = new URL(location.origin + location.pathname);
+  u.searchParams.set('to', to);
+  u.searchParams.set('amt', amt);
+  if(note) u.searchParams.set('note', note);
+  navigator.clipboard.writeText(u.toString())
+    .then(()=>{ setStatus('payStatus','🔗 Pay-link copied — share it anywhere.','ok'); toast('✓ Link copied'); })
+    .catch(()=>{ setStatus('payStatus','Link: ' + u.toString(),'ok'); });
+}
+
+let incoming = null;
+function checkIncoming(){
+  const p = new URLSearchParams(location.search);
+  const to = p.get('to') ? validAddr(p.get('to')) : null;
+  const amt = p.get('amt');
+  if(!to || !(parseFloat(amt) > 0)) return;
+  incoming = { to, amt: parseFloat(amt).toString(), note: (p.get('note')||'').slice(0,120) };
+  $('incomingReceipt').innerHTML = `
+    <div class="r-foot">payment request</div>
+    <div class="r-amt">${incoming.amt} USDC</div>
+    <div class="r-sep"></div>
+    <div class="r-line"><span>to</span><b>${incoming.to}</b></div>
+    ${incoming.note ? `<div class="r-line"><span>note</span><b>${escHtml(incoming.note)}</b></div>` : ''}
+    <div class="r-line"><span>network</span><b>Arc Testnet · gas in USDC</b></div>`;
+  $('incomingCard').style.display = '';
+}
+function payIncoming(){ if(incoming) sendPay(incoming.to, incoming.amt, incoming.note, 'incomingStatus'); }
+function escHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function previewSplit(){
+  const lines = $('splitTo').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const amt = parseFloat($('splitAmt').value.replace(',','.'));
+  if(!lines.length || !(amt > 0)){ $('splitPreview').textContent=''; return; }
+  $('splitPreview').innerHTML = `${lines.length} recipient(s) · <b>${(amt/lines.length).toFixed(4)} USDC</b> each`;
+}
+$('splitTo').addEventListener('input', previewSplit);
+$('splitAmt').addEventListener('input', previewSplit);
+
+async function sendSplit(){
+  if(!signer){ await connect(); if(!signer) return; }
+  const lines = $('splitTo').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const addrs = lines.map(validAddr);
+  if(!lines.length || lines.length > 20){ setStatus('splitStatus','Between 1 and 20 recipients.','err'); return; }
+  const bad = addrs.findIndex(a=>!a);
+  if(bad !== -1){ setStatus('splitStatus',`Line ${bad+1} is not a valid address.`,'err'); return; }
+  const amt = $('splitAmt').value.trim().replace(',','.');
+  if(!(parseFloat(amt) > 0)){ setStatus('splitStatus','Enter a total amount above zero.','err'); return; }
+  const note = $('splitNote').value.trim();
+  try{
+    setStatus('splitStatus','Waiting for wallet confirmation…');
+    const c = new ethers.Contract(ARCPAY, ABI, signer);
+    const tx = await c.splitPay(addrs, note, { value: ethers.parseEther(amt) });
+    setStatus('splitStatus','⏳ Splitting… ' + short(tx.hash));
+    const rc = await tx.wait();
+    setStatus('splitStatus',`✅ Split ${amt} USDC across ${addrs.length} wallets · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view tx ↗</a>`,'ok');
+    toast('✓ Split sent');
+  }catch(e){ setStatus('splitStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
+}
+
+/* ── GAS ── */
+let gasWei = null;
+async function refreshGas(){
+  try{
+    const fee = await readProvider.send('eth_gasPrice', []);
+    gasWei = BigInt(fee);
+    const gwei = Number(gasWei) / 1e9;
+    $('gasNum').textContent = gwei.toFixed(3);
+    $('gasPill').textContent = '⛽ ' + gwei.toFixed(2) + ' gwei';
+    calcCost();
+  }catch(e){ $('gasNote').textContent = 'RPC unreachable — retrying…'; }
+}
+function pickPreset(btn){
+  document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  $('gasLimit').value = btn.dataset.g;
+  calcCost();
+}
+function calcCost(){
+  const limit = parseInt($('gasLimit').value) || 0;
+  if(!gasWei || !limit){ $('gasCost').textContent='—'; return; }
+  const usdc = Number(gasWei * BigInt(limit)) / 1e18;
+  $('gasCost').innerHTML = `Estimated cost: <b>${usdc.toFixed(6)} USDC</b> (≈ $${usdc.toFixed(4)})<br/><span style="color:var(--muted)">gas limit ${limit.toLocaleString()} × ${(Number(gasWei)/1e9).toFixed(3)} gwei — on Arc, the fee really is in dollars.</span>`;
+}
+$('gasLimit').addEventListener('input', calcCost);
+refreshGas();
+setInterval(refreshGas, 15000);
+
+/* ── LOG OKUMA: önce ArcScan API, olmazsa RPC (son 50k blok) ── */
+async function getAllLogs(){
+  try{
+    let items = [], pp = null;
+    for(let p = 0; p < 5; p++){
+      let url = `${SCAN}/api/v2/addresses/${ARCPAY}/logs`;
+      if(pp) url += '?' + new URLSearchParams(pp).toString();
+      const r = await fetch(url);
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      items = items.concat(j.items || []);
+      if(!j.next_page_params) break;
+      pp = j.next_page_params;
+    }
+    return items.map((l,i)=>({
+      topics: (l.topics || []).filter(Boolean),
+      data: l.data || '0x',
+      transactionHash: l.transaction_hash || l.tx_hash || '',
+      blockNumber: Number(l.block_number || 0),
+      index: l.index ?? i
+    }));
+  }catch(e){
+    const latest = await readProvider.getBlockNumber();
+    const logs = await readProvider.getLogs({ address: ARCPAY, fromBlock: Math.max(0, latest - 50000), toBlock: 'latest' });
+    return logs.map(l=>({ topics:[...l.topics], data:l.data, transactionHash:l.transactionHash, blockNumber:l.blockNumber, index:l.index }));
+  }
+}
+function parseAll(logs){
+  return logs.map(l=>{
+    try{ const ev = iface.parseLog({ topics:l.topics, data:l.data }); return ev ? { ev, l } : null; }
+    catch{ return null; }
+  }).filter(Boolean);
+}
+
+/* ── HISTORY ── */
+async function loadHistory(){
+  if(!userAddress){ await connect(); if(!userAddress) return; }
+  $('histList').innerHTML = '<p class="empty">Reading PaymentSent events from chain…</p>';
+  try{
+    const me = userAddress.toLowerCase();
+    const all = parseAll(await getAllLogs())
+      .filter(x => x.ev.name === 'PaymentSent' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me))
+      .sort((a,b)=>b.l.blockNumber - a.l.blockNumber);
+    if(!all.length){ $('histList').innerHTML = '<p class="empty">No receipts yet — send your first payment in the Pay tab.</p>'; return; }
+    $('histList').innerHTML = all.slice(0,30).map(({ev,l})=>{
+      const out = ev.args.from.toLowerCase() === me;
+      return `<div class="receipt">
+        <div class="r-amt" style="color:${out?'var(--text)':'var(--green)'}">${out?'−':'+'}${Number(ethers.formatEther(ev.args.amount)).toFixed(4)} USDC</div>
+        <div class="r-sep"></div>
+        <div class="r-line"><span>${out?'to':'from'}</span><b>${short(out?ev.args.to:ev.args.from)}</b></div>
+        ${ev.args.note ? `<div class="r-line"><span>note</span><b>${escHtml(ev.args.note)}</b></div>` : ''}
+        <div class="r-line"><span>block</span><b>${l.blockNumber} · <a href="${SCAN}/tx/${l.transactionHash}" target="_blank" rel="noreferrer" style="color:var(--accent)">tx ↗</a></b></div>
+        <div class="r-foot">arcpay · on-chain receipt</div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    $('histList').innerHTML = `<p class="empty">Could not read logs: ${escHtml((e.shortMessage||e.message||'').slice(0,80))}</p>`;
+  }
+}
+
+/* ── RECALLABLE ── */
+let rcWindow = 3600;
+function pickWindow(btn){
+  btn.closest('.row').querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  rcWindow = parseInt(btn.dataset.s);
+}
+
+async function sendRecallable(){
+  if(!signer){ await connect(); if(!signer) return; }
+  const to = validAddr($('rcTo').value);
+  const amt = $('rcAmt').value.trim().replace(',','.');
+  const note = $('rcNote').value.trim();
+  if(!to){ setStatus('rcStatus','Enter a valid recipient address.','err'); return; }
+  if(!(parseFloat(amt) > 0)){ setStatus('rcStatus','Enter an amount above zero.','err'); return; }
+  try{
+    setStatus('rcStatus','Waiting for wallet confirmation…');
+    const c = new ethers.Contract(ARCPAY, ABI, signer);
+    const tx = await c.payRecallable(to, rcWindow, note, { value: ethers.parseEther(amt) });
+    setStatus('rcStatus','⏳ Sending… ' + short(tx.hash));
+    const rc = await tx.wait();
+    setStatus('rcStatus',`✅ Recallable sent — recipient can claim now, you can recall after the window · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    toast('✓ Recallable payment sent');
+    loadRecalls();
+  }catch(e){ setStatus('rcStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
+}
+
+let rcItems = [];
+async function loadRecalls(){
+  if(!userAddress){ await connect(); if(!userAddress) return; }
+  $('rcList').innerHTML = '<p class="empty">Reading recallable payments from chain…</p>';
+  try{
+    const me = userAddress.toLowerCase();
+    const created = parseAll(await getAllLogs())
+      .filter(x => x.ev.name === 'RecallableCreated' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me));
+    if(!created.length){ $('rcList').innerHTML = '<p class="empty">No recallable payments yet — send one above.</p>'; return; }
+    const c = new ethers.Contract(ARCPAY, ABI, readProvider);
+    rcItems = await Promise.all(created.map(async ({ev})=>{
+      const id = Number(ev.args.id);
+      const onchain = await c.rpays(id);
+      return {
+        id,
+        from: ev.args.from, to: ev.args.to,
+        amount: ethers.formatEther(ev.args.amount),
+        deadline: Number(ev.args.recallAfter),
+        note: ev.args.note,
+        status: Number(onchain.status), // 0 open 1 claimed 2 recalled
+        out: ev.args.from.toLowerCase() === me
+      };
+    }));
+    rcItems.sort((a,b)=>b.id-a.id);
+    renderRecalls();
+  }catch(e){
+    $('rcList').innerHTML = `<p class="empty">Could not read: ${escHtml((e.shortMessage||e.message||'').slice(0,80))}</p>`;
+  }
+}
+
+function fmtLeft(s){
+  if(s <= 0) return 'window open';
+  const d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60), x=Math.floor(s%60);
+  if(d) return `${d}d ${h}h ${m}m`;
+  if(h) return `${h}h ${m}m ${x}s`;
+  return `${m}m ${x}s`;
+}
+
+function renderRecalls(){
+  if(!rcItems.length) return;
+  const now = Math.floor(Date.now()/1000);
+  $('rcList').innerHTML = rcItems.map(p=>{
+    const left = p.deadline - now;
+    const badge = p.status === 1 ? '<span style="color:var(--green)">claimed ✓</span>'
+                : p.status === 2 ? '<span style="color:var(--amber)">recalled ↩</span>'
+                : p.out
+                  ? (left > 0 ? `<span style="color:var(--muted)">recall in <b style="color:var(--text)">${fmtLeft(left)}</b></span>` : '<span style="color:var(--amber)">recall window open</span>')
+                  : '<span style="color:var(--green)">claimable now</span>';
+    const action = p.status !== 0 ? ''
+                 : p.out
+                   ? (left <= 0 ? `<button class="connect-btn" onclick="recallPay(${p.id})">↩ Recall funds</button>` : '')
+                   : `<button class="connect-btn primary" onclick="claimPay(${p.id})">Claim ${Number(p.amount).toFixed(4)} USDC</button>`;
+    return `<div class="receipt">
+      <div class="r-amt" style="color:${p.status===2?'var(--amber)':p.out?'var(--text)':'var(--green)'}">${p.out?'−':'+'}${Number(p.amount).toFixed(4)} USDC</div>
+      <div class="r-sep"></div>
+      <div class="r-line"><span>${p.out?'to':'from'}</span><b>${short(p.out?p.to:p.from)}</b></div>
+      ${p.note ? `<div class="r-line"><span>note</span><b>${escHtml(p.note)}</b></div>` : ''}
+      <div class="r-line"><span>status</span><b>${badge}</b></div>
+      ${action ? `<div class="row" style="justify-content:center;margin-top:10px;">${action}</div>` : ''}
+      <div class="r-foot">arcpay · recallable #${p.id}</div>
+    </div>`;
+  }).join('');
+}
+setInterval(()=>{ if($('sec-recall').classList.contains('active')) renderRecalls(); }, 1000);
+
+async function claimPay(id){
+  if(!signer){ await connect(); if(!signer) return; }
+  try{
+    const c = new ethers.Contract(ARCPAY, ABI, signer);
+    const tx = await c.claim(id); toast('⏳ Claiming…');
+    await tx.wait(); toast('✓ Claimed'); loadRecalls();
+  }catch(e){ toast('Claim failed: ' + (e.shortMessage||e.message||'').slice(0,50)); }
+}
+async function recallPay(id){
+  if(!signer){ await connect(); if(!signer) return; }
+  try{
+    const c = new ethers.Contract(ARCPAY, ABI, signer);
+    const tx = await c.recall(id); toast('⏳ Recalling…');
+    await tx.wait(); toast('✓ Funds recalled'); loadRecalls();
+  }catch(e){ toast('Recall failed: ' + (e.shortMessage||e.message||'').slice(0,50)); }
+}
+
+checkIncoming();
+window.connect=connect; window.disconnect=disconnect; window.go=go; window.sendPay=sendPay; window.makeLink=makeLink;
+window.payIncoming=payIncoming; window.sendSplit=sendSplit; window.pickPreset=pickPreset; window.loadHistory=loadHistory;
+window.pickWindow=pickWindow; window.sendRecallable=sendRecallable; window.loadRecalls=loadRecalls;
+window.claimPay=claimPay; window.recallPay=recallPay;
+</script>
+</body>
+</html>
