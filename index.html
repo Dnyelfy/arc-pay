@@ -198,24 +198,31 @@ footer a:hover{color:var(--accent);}
         <span class="chip">Ethereum Sepolia</span>
         <span style="color:var(--dim);">· via Chainlink CCIP</span>
       </div>
-      <label>Destination address on Ethereum Sepolia</label>
-      <input id="ccReceiver" placeholder="0x… (leave empty to send to your own wallet)" spellcheck="false"/>
+      <label>Destination — your ArcPayReceiver contract on Sepolia</label>
+      <input id="ccReceiver" value="0x8D77a145a238Aa36f2b20027b353cF1E981B569F" spellcheck="false"/>
       <label>Message — travels cross-chain with your transaction</label>
       <input id="ccMsg" placeholder="gm from Arc 👋" maxlength="120"/>
       <div class="cost" id="ccFee">Fee: <span style="color:var(--muted)">—</span> <button class="connect-btn" style="padding:6px 12px;font-size:12px;margin-left:6px;" onclick="estimateCcipFee()">Estimate fee</button></div>
       <div class="row"><button class="connect-btn primary" onclick="sendCcip()">Send cross-chain →</button></div>
       <div class="status" id="ccStatus"></div>
-      <div class="hint">Delivery to Sepolia takes a few minutes while Chainlink's network finalizes it. Track it on the CCIP explorer once sent.</div>
+      <div class="hint">Delivery to Sepolia takes a few minutes while Chainlink's network finalizes it. Your message lands in the receiver contract, gets stored, and emits an event.</div>
+    </div>
+    <div class="card">
+      <h2>📨 Messages on Ethereum Sepolia</h2>
+      <p class="hint" style="margin:0 0 4px;">Read straight from your receiver contract <a href="https://sepolia.etherscan.io/address/0x8D77a145a238Aa36f2b20027b353cF1E981B569F" target="_blank" rel="noreferrer" style="color:var(--accent)">0x8D77…569F ↗</a> — every message that crossed from Arc and actually landed here.</p>
+      <div class="row" style="margin-top:8px;"><button class="connect-btn" onclick="loadSepoliaMessages()">↻ Load messages on Sepolia</button></div>
+      <div id="ccInbox"><p class="empty">Send a cross-chain message, wait a few minutes, then load — this proves it arrived and ran code on the other chain.</p></div>
     </div>
     <div class="card">
       <h2>How this works</h2>
       <div class="cost" style="line-height:2;color:var(--muted);">
         → Your transaction calls the CCIP Router on Arc Testnet<br/>
         → Chainlink routes the message over the live Arc → Sepolia lane<br/>
-        → It lands on Ethereum Sepolia, addressed to your wallet<br/>
-        → One transaction, two chains, fee paid in USDC
+        → It lands on Ethereum Sepolia and runs your receiver contract<br/>
+        → The contract stores the message and emits an event<br/>
+        → One transaction, two chains, real app-to-app messaging
       </div>
-      <div class="hint" style="margin-top:12px;">Router <span style="color:var(--muted)">0xdE4E…eab8</span> · this is a message-only send, so no contract runs on the Sepolia side — the message simply arrives and is trackable end-to-end.</div>
+      <div class="hint" style="margin-top:12px;">Arc Router <span style="color:var(--muted)">0xdE4E…eab8</span> · Sepolia receiver <span style="color:var(--muted)">0x8D77…569F</span> · fee paid in USDC.</div>
     </div>
   </div>
 
@@ -464,23 +471,35 @@ const CCIP_ABI = [
   'function ccipSend(uint64 destinationChainSelector, (bytes receiver, bytes data, (address token, uint256 amount)[] tokenAmounts, address feeToken, bytes extraArgs) message) payable returns (bytes32)'
 ];
 
+// Our ArcPayReceiver contract, deployed on Ethereum Sepolia.
+// Messages sent from ArcPay land here, get stored, and emit an event.
+const SEPOLIA_RECEIVER = '0x8D77a145a238Aa36f2b20027b353cF1E981B569F';
+const SEPOLIA_RPC = 'https://ethereum-sepolia-rpc.publicnode.com';
+const SEPOLIA_SCAN = 'https://sepolia.etherscan.io';
+const sepoliaProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
+const RECEIVER_ABI = [
+  'function total() view returns (uint256)',
+  'function getMessages(uint256 offset, uint256 limit) view returns ((bytes32 messageId, uint64 sourceChain, address sender, string text, uint256 receivedAt)[])'
+];
+
 function buildCcipMessage(receiver, text){
   const abi = ethers.AbiCoder.defaultAbiCoder();
   // GenericExtraArgsV2: tag 0x181dcf10 + abi.encode(uint256 gasLimit, bool allowOutOfOrderExecution)
+  // gasLimit must cover the receiver's _ccipReceive (store + emit) on Sepolia.
   const tag = '0x181dcf10';
-  const extra = abi.encode(['uint256','bool'], [0n, true]);
+  const extra = abi.encode(['uint256','bool'], [200000n, true]);
   const extraArgs = ethers.concat([tag, extra]);
   return [
-    abi.encode(['address'], [receiver]),            // receiver (abi-encoded)
-    ethers.hexlify(ethers.toUtf8Bytes(text || '')), // data
-    [],                                             // tokenAmounts (none)
-    ethers.ZeroAddress,                             // feeToken = native USDC
+    abi.encode(['address'], [receiver]),     // receiver (abi-encoded)
+    abi.encode(['string'], [text || '']),    // data — ABI-encoded string, decoded by the contract
+    [],                                      // tokenAmounts (none)
+    ethers.ZeroAddress,                      // feeToken = native USDC
     extraArgs
   ];
 }
 
 async function estimateCcipFee(){
-  const receiver = validAddr($('ccReceiver').value) || userAddress;
+  const receiver = validAddr($('ccReceiver').value) || SEPOLIA_RECEIVER;
   if(!receiver){ setStatus('ccStatus','Connect your wallet or enter a destination address first.','err'); return null; }
   try{
     const router = new ethers.Contract(CCIP_ROUTER, CCIP_ABI, readProvider);
@@ -497,8 +516,8 @@ async function estimateCcipFee(){
 
 async function sendCcip(){
   if(!signer){ await connect(); if(!signer) return; }
-  const receiver = validAddr($('ccReceiver').value) || userAddress;
-  if(!receiver){ setStatus('ccStatus','Enter a destination address, or connect to send to your own wallet.','err'); return; }
+  const receiver = validAddr($('ccReceiver').value) || SEPOLIA_RECEIVER;
+  if(!receiver){ setStatus('ccStatus','Enter a destination address, or leave empty to use the ArcPay receiver contract.','err'); return; }
   const text = $('ccMsg').value.trim() || 'gm from Arc';
   try{
     setStatus('ccStatus','Estimating fee…');
@@ -510,9 +529,35 @@ async function sendCcip(){
     const tx = await router.ccipSend(SEPOLIA_SELECTOR, msg, { value: fee });
     setStatus('ccStatus','⏳ Sending across chains… ' + short(tx.hash));
     const rc = await tx.wait();
-    setStatus('ccStatus',`✅ Sent from Arc → Ethereum Sepolia · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">Arc tx ↗</a> · <a href="https://ccip.chain.link" target="_blank" rel="noreferrer">track on CCIP explorer ↗</a><br/><span style="color:var(--muted)">Paste the Arc tx hash into the CCIP explorer to follow delivery (a few minutes).</span>`,'ok');
+    setStatus('ccStatus',`✅ Sent from Arc → Ethereum Sepolia · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">Arc tx ↗</a> · <a href="https://ccip.chain.link" target="_blank" rel="noreferrer">track on CCIP ↗</a><br/><span style="color:var(--muted)">Delivery takes a few minutes. Once it lands, hit "Load messages on Sepolia" below to see it stored in your receiver contract.</span>`,'ok');
     toast('✓ Cross-chain message sent');
   }catch(e){ setStatus('ccStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,130),'err'); }
+}
+
+/* Read messages that have landed in the ArcPayReceiver contract on Sepolia */
+async function loadSepoliaMessages(){
+  const box = $('ccInbox');
+  box.innerHTML = '<p class="empty">Reading your receiver contract on Ethereum Sepolia…</p>';
+  try{
+    const c = new ethers.Contract(SEPOLIA_RECEIVER, RECEIVER_ABI, sepoliaProvider);
+    const list = await c.getMessages(0, 20); // newest first
+    if(!list.length){
+      box.innerHTML = '<p class="empty">No messages have landed yet. After you send one, give CCIP a few minutes, then load again.</p>';
+      return;
+    }
+    box.innerHTML = list.map(m=>{
+      const when = new Date(Number(m.receivedAt) * 1000).toLocaleString();
+      return `<div class="receipt">
+        <div class="r-foot">arrived from arc · via ccip</div>
+        <div class="r-line"><span>message</span><b>${escHtml(m.text)}</b></div>
+        <div class="r-line"><span>from</span><b>${short(m.sender)}</b></div>
+        <div class="r-line"><span>received</span><b>${when}</b></div>
+        <div class="r-line"><span>ccip id</span><b><a href="https://ccip.chain.link/msg/${m.messageId}" target="_blank" rel="noreferrer" style="color:var(--accent)">${short(m.messageId)} ↗</a></b></div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    box.innerHTML = `<p class="empty">Could not read contract: ${escHtml((e.shortMessage||e.message||'').slice(0,90))}</p>`;
+  }
 }
 
 /* ── LOG OKUMA: önce ArcScan API, olmazsa RPC (son 50k blok) ── */
@@ -689,7 +734,7 @@ window.connect=connect; window.disconnect=disconnect; window.go=go; window.sendP
 window.payIncoming=payIncoming; window.sendSplit=sendSplit; window.pickPreset=pickPreset; window.loadHistory=loadHistory;
 window.pickWindow=pickWindow; window.sendRecallable=sendRecallable; window.loadRecalls=loadRecalls;
 window.claimPay=claimPay; window.recallPay=recallPay;
-window.estimateCcipFee=estimateCcipFee; window.sendCcip=sendCcip;
+window.estimateCcipFee=estimateCcipFee; window.sendCcip=sendCcip; window.loadSepoliaMessages=loadSepoliaMessages;
 </script>
 </body>
 </html>
