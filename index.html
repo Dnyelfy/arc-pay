@@ -4,9 +4,9 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ArcPay — USDC-native payments on Arc</title>
-<meta name="description" content="Send USDC, create payment links, split bills and track gas — all native on Arc Testnet, ~$0.01 per tx."/>
+<meta name="description" content="Send USDC, create payment links, split bills, bridge messages cross-chain and track gas — all native on Arc Testnet, ~$0.01 per tx."/>
 <meta property="og:title" content="ArcPay — USDC-native payments on Arc"/>
-<meta property="og:description" content="Payment links, split payments, live gas tracker & on-chain receipts on Arc Testnet."/>
+<meta property="og:description" content="Payment links, split payments, cross-chain messaging via Chainlink CCIP, live gas tracker & on-chain receipts on Arc Testnet."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -76,6 +76,11 @@ textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .cost{font-family:var(--mono);font-size:13px;color:var(--text);margin-top:14px;line-height:1.9;}
 .cost b{color:var(--green);}
 .empty{font-family:var(--mono);font-size:12.5px;color:var(--dim);padding:18px 0;text-align:center;}
+/* cross-chain lane görseli */
+.lane{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted);margin:6px 0 2px;flex-wrap:wrap;}
+.lane .chip{padding:6px 12px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);}
+.lane .chip.arc{border-color:var(--accent);color:var(--accent);}
+.lane .arrow{color:var(--accent2);font-size:16px;}
 footer{margin-top:auto;border-top:0.5px solid var(--border);padding:20px 0;font-family:var(--mono);font-size:11.5px;color:var(--dim);}
 footer a{color:var(--muted);text-decoration:none;}
 footer a:hover{color:var(--accent);}
@@ -100,13 +105,14 @@ footer a:hover{color:var(--accent);}
 <div class="wrap">
   <div class="hero">
     <h1>Money moves like a message.<br/><em>USDC-native, on Arc.</em></h1>
-    <p>Send a payment, drop someone a pay-link, split a bill across 20 wallets — every transfer lands as an on-chain receipt for about a cent. Gas is USDC here; what you see is what you pay.</p>
+    <p>Send a payment, drop someone a pay-link, split a bill across 20 wallets, or bridge a message to Ethereum — every action lands on-chain for about a cent. Gas is USDC here; what you see is what you pay.</p>
   </div>
 
   <div class="tabs">
     <button class="tab-btn active" onclick="go('pay',this)">💸 Pay & Link</button>
     <button class="tab-btn" onclick="go('split',this)">🔀 Split</button>
     <button class="tab-btn" onclick="go('recall',this)">⏳ Recallable</button>
+    <button class="tab-btn" onclick="go('bridge',this)">🌉 Cross-Chain</button>
     <button class="tab-btn" onclick="go('gas',this)">⛽ Gas Tracker</button>
     <button class="tab-btn" onclick="go('history',this)">🧾 Receipts</button>
   </div>
@@ -178,6 +184,38 @@ footer a:hover{color:var(--accent);}
       <h2>Your recallable payments</h2>
       <div class="row" style="margin-top:0;"><button class="connect-btn" onclick="loadRecalls()">↻ Load from chain</button></div>
       <div id="rcList"><p class="empty">Connect & load — outgoing payments show a recall countdown, incoming ones a claim button.</p></div>
+    </div>
+  </div>
+
+  <!-- CROSS-CHAIN (Chainlink CCIP) -->
+  <div class="section" id="sec-bridge">
+    <div class="card">
+      <h2>🌉 Send a message across chains</h2>
+      <p class="hint" style="margin:0 0 8px;">Powered by Chainlink CCIP. Your message leaves Arc Testnet and is delivered to Ethereum Sepolia — one of the few live cross-chain lanes on Arc. The fee is paid in USDC, like everything else here.</p>
+      <div class="lane">
+        <span class="chip arc">Arc Testnet</span>
+        <span class="arrow">→</span>
+        <span class="chip">Ethereum Sepolia</span>
+        <span style="color:var(--dim);">· via Chainlink CCIP</span>
+      </div>
+      <label>Destination address on Ethereum Sepolia</label>
+      <input id="ccReceiver" placeholder="0x… (leave empty to send to your own wallet)" spellcheck="false"/>
+      <label>Message — travels cross-chain with your transaction</label>
+      <input id="ccMsg" placeholder="gm from Arc 👋" maxlength="120"/>
+      <div class="cost" id="ccFee">Fee: <span style="color:var(--muted)">—</span> <button class="connect-btn" style="padding:6px 12px;font-size:12px;margin-left:6px;" onclick="estimateCcipFee()">Estimate fee</button></div>
+      <div class="row"><button class="connect-btn primary" onclick="sendCcip()">Send cross-chain →</button></div>
+      <div class="status" id="ccStatus"></div>
+      <div class="hint">Delivery to Sepolia takes a few minutes while Chainlink's network finalizes it. Track it on the CCIP explorer once sent.</div>
+    </div>
+    <div class="card">
+      <h2>How this works</h2>
+      <div class="cost" style="line-height:2;color:var(--muted);">
+        → Your transaction calls the CCIP Router on Arc Testnet<br/>
+        → Chainlink routes the message over the live Arc → Sepolia lane<br/>
+        → It lands on Ethereum Sepolia, addressed to your wallet<br/>
+        → One transaction, two chains, fee paid in USDC
+      </div>
+      <div class="hint" style="margin-top:12px;">Router <span style="color:var(--muted)">0xdE4E…eab8</span> · this is a message-only send, so no contract runs on the Sepolia side — the message simply arrives and is trackable end-to-end.</div>
     </div>
   </div>
 
@@ -400,7 +438,7 @@ async function refreshGas(){
   }catch(e){ $('gasNote').textContent = 'RPC unreachable — retrying…'; }
 }
 function pickPreset(btn){
-  document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#sec-gas .preset').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   $('gasLimit').value = btn.dataset.g;
   calcCost();
@@ -414,6 +452,68 @@ function calcCost(){
 $('gasLimit').addEventListener('input', calcCost);
 refreshGas();
 setInterval(refreshGas, 15000);
+
+/* ── CROSS-CHAIN (Chainlink CCIP) ──
+   Arc Testnet → Ethereum Sepolia, message-only send.
+   Router called directly from the browser — no extra contract to deploy.
+   Fee paid in native USDC (feeToken = address(0)). */
+const CCIP_ROUTER = '0xdE4E7FED43FAC37EB21aA0643d9852f75332eab8';
+const SEPOLIA_SELECTOR = '16015286601757825753'; // Ethereum Sepolia CCIP chain selector
+const CCIP_ABI = [
+  'function getFee(uint64 destinationChainSelector, (bytes receiver, bytes data, (address token, uint256 amount)[] tokenAmounts, address feeToken, bytes extraArgs) message) view returns (uint256)',
+  'function ccipSend(uint64 destinationChainSelector, (bytes receiver, bytes data, (address token, uint256 amount)[] tokenAmounts, address feeToken, bytes extraArgs) message) payable returns (bytes32)'
+];
+
+function buildCcipMessage(receiver, text){
+  const abi = ethers.AbiCoder.defaultAbiCoder();
+  // GenericExtraArgsV2: tag 0x181dcf10 + abi.encode(uint256 gasLimit, bool allowOutOfOrderExecution)
+  const tag = '0x181dcf10';
+  const extra = abi.encode(['uint256','bool'], [0n, true]);
+  const extraArgs = ethers.concat([tag, extra]);
+  return [
+    abi.encode(['address'], [receiver]),            // receiver (abi-encoded)
+    ethers.hexlify(ethers.toUtf8Bytes(text || '')), // data
+    [],                                             // tokenAmounts (none)
+    ethers.ZeroAddress,                             // feeToken = native USDC
+    extraArgs
+  ];
+}
+
+async function estimateCcipFee(){
+  const receiver = validAddr($('ccReceiver').value) || userAddress;
+  if(!receiver){ setStatus('ccStatus','Connect your wallet or enter a destination address first.','err'); return null; }
+  try{
+    const router = new ethers.Contract(CCIP_ROUTER, CCIP_ABI, readProvider);
+    const msg = buildCcipMessage(receiver, $('ccMsg').value.trim() || 'gm from Arc');
+    const fee = await router.getFee(SEPOLIA_SELECTOR, msg);
+    $('ccFee').innerHTML = `Fee: <b>${Number(ethers.formatEther(fee)).toFixed(6)} USDC</b> <span style="color:var(--muted)">· paid on Arc</span>`;
+    setStatus('ccStatus','');
+    return fee;
+  }catch(e){
+    setStatus('ccStatus','Fee estimate failed: ' + (e.shortMessage||e.message||'').slice(0,110),'err');
+    return null;
+  }
+}
+
+async function sendCcip(){
+  if(!signer){ await connect(); if(!signer) return; }
+  const receiver = validAddr($('ccReceiver').value) || userAddress;
+  if(!receiver){ setStatus('ccStatus','Enter a destination address, or connect to send to your own wallet.','err'); return; }
+  const text = $('ccMsg').value.trim() || 'gm from Arc';
+  try{
+    setStatus('ccStatus','Estimating fee…');
+    const router = new ethers.Contract(CCIP_ROUTER, CCIP_ABI, signer);
+    const msg = buildCcipMessage(receiver, text);
+    const fee = await router.getFee(SEPOLIA_SELECTOR, msg);
+    $('ccFee').innerHTML = `Fee: <b>${Number(ethers.formatEther(fee)).toFixed(6)} USDC</b> <span style="color:var(--muted)">· paid on Arc</span>`;
+    setStatus('ccStatus','Waiting for wallet confirmation…');
+    const tx = await router.ccipSend(SEPOLIA_SELECTOR, msg, { value: fee });
+    setStatus('ccStatus','⏳ Sending across chains… ' + short(tx.hash));
+    const rc = await tx.wait();
+    setStatus('ccStatus',`✅ Sent from Arc → Ethereum Sepolia · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">Arc tx ↗</a> · <a href="https://ccip.chain.link" target="_blank" rel="noreferrer">track on CCIP explorer ↗</a><br/><span style="color:var(--muted)">Paste the Arc tx hash into the CCIP explorer to follow delivery (a few minutes).</span>`,'ok');
+    toast('✓ Cross-chain message sent');
+  }catch(e){ setStatus('ccStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,130),'err'); }
+}
 
 /* ── LOG OKUMA: önce ArcScan API, olmazsa RPC (son 50k blok) ── */
 async function getAllLogs(){
@@ -589,6 +689,7 @@ window.connect=connect; window.disconnect=disconnect; window.go=go; window.sendP
 window.payIncoming=payIncoming; window.sendSplit=sendSplit; window.pickPreset=pickPreset; window.loadHistory=loadHistory;
 window.pickWindow=pickWindow; window.sendRecallable=sendRecallable; window.loadRecalls=loadRecalls;
 window.claimPay=claimPay; window.recallPay=recallPay;
+window.estimateCcipFee=estimateCcipFee; window.sendCcip=sendCcip;
 </script>
 </body>
 </html>
