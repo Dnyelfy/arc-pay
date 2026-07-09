@@ -113,7 +113,7 @@ footer a:hover{color:var(--accent);}
     <button class="tab-btn" onclick="go('split',this)">🔀 Split</button>
     <button class="tab-btn" onclick="go('recall',this)">⏳ Recallable</button>
     <button class="tab-btn" onclick="go('bridge',this)">🌉 Cross-Chain</button>
-    <button class="tab-btn" onclick="go('gas',this)">⛽ Gas Tracker</button>
+    <button class="tab-btn" onclick="go('agent',this)">🤖 Billing Agent</button>
     <button class="tab-btn" onclick="go('history',this)">🧾 Receipts</button>
     <button class="tab-btn" onclick="go('subs',this)">🔁 Subscriptions</button>
   </div>
@@ -227,24 +227,31 @@ footer a:hover{color:var(--accent);}
     </div>
   </div>
 
-  <!-- GAS -->
-  <div class="section" id="sec-gas">
+  <!-- BILLING AGENT -->
+  <div class="section" id="sec-agent">
     <div class="card">
-      <h2>Live gas — Arc Testnet</h2>
-      <div class="gasbig"><b id="gasNum">—</b><span>gwei · refreshes every 15s</span></div>
-      <div class="hint" id="gasNote">Arc burns USDC as gas — predictable, dollar-denominated fees.</div>
-    </div>
-    <div class="card">
-      <h2>What will my transaction cost?</h2>
-      <div class="row" style="margin-top:4px;">
-        <button class="preset active" data-g="21000" onclick="pickPreset(this)">Transfer · 21k</button>
-        <button class="preset" data-g="50000" onclick="pickPreset(this)">Token tx · 50k</button>
-        <button class="preset" data-g="120000" onclick="pickPreset(this)">dApp call · 120k</button>
-        <button class="preset" data-g="600000" onclick="pickPreset(this)">Deploy · 600k</button>
+      <h2>🤖 Billing agent — subscriptions collect themselves</h2>
+      <div class="hint" style="margin-bottom:14px;">A tiny on-chain worker with its own wallet, living in this page. While it's online, it watches ArcSub and charges every due subscription <b>by itself</b> — no MetaMask, no clicks, no human. Subscribers pay while everyone sleeps. Burner key stays in this browser · testnet only.</div>
+      <div class="receipt" style="margin-bottom:12px;">
+        Agent address: <b id="kpAddr" style="word-break:break-all;">—</b><br/>
+        <span style="color:var(--muted);font-size:12px;">Gas balance: <b id="kpGas">—</b> · pays only tx fees; subscription money flows subscriber → merchant directly</span>
       </div>
-      <label>Or custom gas limit</label>
-      <input id="gasLimit" value="21000" inputmode="numeric"/>
-      <div class="cost" id="gasCost">—</div>
+      <div class="row" style="align-items:flex-end;">
+        <div style="flex:1;min-width:140px;">
+          <label>Fund gas (USDC)</label>
+          <input id="kpFundAmt" placeholder="1.00" inputmode="decimal"/>
+        </div>
+        <button class="connect-btn" onclick="kpFund()">⛽ Fund gas</button>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button class="connect-btn primary" onclick="kpStart()">▶ Start agent</button>
+        <button class="connect-btn" onclick="kpStop()">■ Stop</button>
+        <button class="connect-btn" onclick="kpSweep()">💸 Sweep gas back</button>
+        <button class="connect-btn" onclick="kpReset()">🗑 New key</button>
+      </div>
+      <div class="status" id="kpState" style="margin-top:12px;">agent offline</div>
+      <div id="kpTerm" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.8;max-height:240px;overflow-y:auto;white-space:pre-wrap;margin-top:12px;"><span style="color:var(--muted)">[boot]</span> Agent terminal ready. Fund gas, press Start, and leave this tab open.</div>
+      <div class="status" id="kpStatus"></div>
     </div>
   </div>
 
@@ -475,31 +482,13 @@ async function sendSplit(){
   }catch(e){ setStatus('splitStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
 }
 
-/* ── GAS ── */
-let gasWei = null;
+/* ── header gas pill ── */
 async function refreshGas(){
   try{
     const fee = await readProvider.send('eth_gasPrice', []);
-    gasWei = BigInt(fee);
-    const gwei = Number(gasWei) / 1e9;
-    $('gasNum').textContent = gwei.toFixed(3);
-    $('gasPill').textContent = '⛽ ' + gwei.toFixed(2) + ' gwei';
-    calcCost();
-  }catch(e){ $('gasNote').textContent = 'RPC unreachable — retrying…'; }
+    $('gasPill').textContent = '⛽ ' + (Number(BigInt(fee)) / 1e9).toFixed(2) + ' gwei';
+  }catch(_){}
 }
-function pickPreset(btn){
-  document.querySelectorAll('#sec-gas .preset').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  $('gasLimit').value = btn.dataset.g;
-  calcCost();
-}
-function calcCost(){
-  const limit = parseInt($('gasLimit').value) || 0;
-  if(!gasWei || !limit){ $('gasCost').textContent='—'; return; }
-  const usdc = Number(gasWei * BigInt(limit)) / 1e18;
-  $('gasCost').innerHTML = `Estimated cost: <b>${usdc.toFixed(6)} USDC</b> (≈ $${usdc.toFixed(4)})<br/><span style="color:var(--muted)">gas limit ${limit.toLocaleString()} × ${(Number(gasWei)/1e9).toFixed(3)} gwei — on Arc, the fee really is in dollars.</span>`;
-}
-$('gasLimit').addEventListener('input', calcCost);
 refreshGas();
 setInterval(refreshGas, 15000);
 
@@ -774,7 +763,7 @@ async function recallPay(id){
 
 checkIncoming();
 window.connect=connect; window.disconnect=disconnect; window.go=go; window.sendPay=sendPay; window.makeLink=makeLink;
-window.payIncoming=payIncoming; window.sendSplit=sendSplit; window.pickPreset=pickPreset; window.loadHistory=loadHistory;
+window.payIncoming=payIncoming; window.sendSplit=sendSplit; window.loadHistory=loadHistory;
 window.pickWindow=pickWindow; window.sendRecallable=sendRecallable; window.loadRecalls=loadRecalls;
 window.claimPay=claimPay; window.recallPay=recallPay;
 window.estimateCcipFee=estimateCcipFee; window.sendCcip=sendCcip; window.loadSepoliaMessages=loadSepoliaMessages;
@@ -974,6 +963,118 @@ function toggleAutoCollect(){
     }, 60000);
   }
 }
+
+/* ===== Billing agent (ArcSub keeper) ===== */
+const KP_KEY = 'arcpayKeeperKey_v1';
+const KP_ABI = [
+  'function nextId() view returns (uint256)',
+  'function charge(uint256 id)',
+  'function getSub(uint256 id) view returns (address subscriber, address merchant, uint96 amount, uint32 interval, uint40 nextChargeAt, bool active, string label)'
+];
+let kpWallet = null, kpTimer = null, kpBusy = false;
+
+function kpLog(m, cls){
+  const el = $('kpTerm');
+  const t = new Date().toLocaleTimeString('tr-TR');
+  const color = cls==='ok' ? 'var(--green)' : cls==='err' ? 'var(--red)' : cls==='warn' ? 'var(--amber)' : 'var(--muted)';
+  el.innerHTML += `\n<span style="color:var(--muted)">[${t}]</span> <span style="color:${color}">${m}</span>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function kpInit(){
+  if (kpWallet) return;
+  let k = localStorage.getItem(KP_KEY);
+  if (!k){
+    k = ethers.Wallet.createRandom().privateKey;
+    localStorage.setItem(KP_KEY, k);
+    kpLog('🔑 New agent wallet generated (key stored in this browser only).','warn');
+  }
+  kpWallet = new ethers.Wallet(k, readProvider);
+  $('kpAddr').textContent = kpWallet.address;
+  kpBal();
+}
+
+async function kpBal(){
+  if (!kpWallet) return;
+  try{
+    const b = await readProvider.getBalance(kpWallet.address);
+    $('kpGas').textContent = Number(ethers.formatEther(b)).toFixed(3) + ' USDC';
+  }catch(_){}
+}
+
+async function kpTick(){
+  if (kpBusy || !kpWallet) return;
+  kpBusy = true;
+  try{
+    const c = new ethers.Contract(ARCSUB, KP_ABI, kpWallet);
+    const maxId = Number(await c.nextId());
+    const now = Math.floor(Date.now()/1000);
+    for (let id = 1; id < Math.min(maxId, 200); id++){
+      let s; try{ s = await c.getSub(id); }catch{ continue; }
+      if (!s.active || now < Number(s.nextChargeAt)) continue;
+      kpLog(`🔁 Subscription #${id} ("${s.label}") is due — collecting ${ethers.formatUnits(s.amount,6)} USDC for ${short(s.merchant)}…`);
+      try{
+        const tx = await c.charge(id);
+        await tx.wait();
+        kpLog(`✓ #${id} charged autonomously — merchant paid, next cycle scheduled.`,'ok');
+      }catch(e){
+        kpLog(`#${id} charge failed: ` + (e.shortMessage||e.message||'').slice(0,70) + (String(e.message||'').includes('insufficient') ? ' — fund my gas!' : ''),'err');
+      }
+    }
+    kpBal();
+  }catch(e){ kpLog('tick error: ' + (e.shortMessage||e.message||'').slice(0,70),'err'); }
+  kpBusy = false;
+}
+
+function kpStart(){
+  kpInit();
+  if (kpTimer) return;
+  kpTimer = setInterval(kpTick, 15000);
+  kpTick();
+  $('kpState').textContent = '🟢 agent ONLINE — scanning ArcSub every 15s';
+  kpLog('▶ Agent started.','ok');
+}
+function kpStop(){
+  clearInterval(kpTimer); kpTimer = null;
+  $('kpState').textContent = 'agent offline';
+  kpLog('■ Agent stopped.');
+}
+
+async function kpFund(){
+  kpInit();
+  if (!signer){ await connect(); if(!signer) return; }
+  const amt = $('kpFundAmt').value || '1';
+  try{
+    setStatus('kpStatus', `Confirm sending ${amt} USDC gas to the agent…`);
+    const tx = await signer.sendTransaction({ to: kpWallet.address, value: ethers.parseEther(amt) });
+    const rc = await tx.wait();
+    setStatus('kpStatus', `✓ Agent funded · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    kpBal();
+  }catch(e){ setStatus('kpStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,80),'err'); }
+}
+
+async function kpSweep(){
+  kpInit();
+  if (!userAddress){ await connect(); if(!userAddress) return; }
+  try{
+    const bal = await readProvider.getBalance(kpWallet.address);
+    const keep = ethers.parseEther('0.2');
+    if (bal <= keep){ setStatus('kpStatus','Nothing to sweep (keeping 0.2 for gas).'); return; }
+    const tx = await kpWallet.sendTransaction({ to: userAddress, value: bal - keep });
+    await tx.wait();
+    setStatus('kpStatus','✓ Gas swept back to your wallet.','ok');
+    kpLog('💸 Excess gas swept to owner.','ok');
+    kpBal();
+  }catch(e){ setStatus('kpStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,80),'err'); }
+}
+
+function kpReset(){
+  if (!confirm('Generate a NEW agent key? Sweep gas back first!')) return;
+  localStorage.removeItem(KP_KEY);
+  kpWallet = null; kpStop(); kpInit();
+}
+
+window.kpStart=kpStart; window.kpStop=kpStop; window.kpFund=kpFund; window.kpSweep=kpSweep; window.kpReset=kpReset;
 </script>
 </body>
 </html>
