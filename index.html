@@ -115,6 +115,7 @@ footer a:hover{color:var(--accent);}
     <button class="tab-btn" onclick="go('bridge',this)">🌉 Cross-Chain</button>
     <button class="tab-btn" onclick="go('gas',this)">⛽ Gas Tracker</button>
     <button class="tab-btn" onclick="go('history',this)">🧾 Receipts</button>
+    <button class="tab-btn" onclick="go('subs',this)">🔁 Subscriptions</button>
   </div>
 
   <!-- PAY -->
@@ -255,6 +256,48 @@ footer a:hover{color:var(--accent);}
       <div id="histList"><p class="empty">Connect your wallet and load — every ArcPay payment you sent or received, straight from the chain.</p></div>
     </div>
   </div>
+  <!-- SUBSCRIPTIONS -->
+  <div class="section" id="sec-subs">
+    <div class="card">
+      <h2>🔁 Start a subscription</h2>
+      <label>Merchant / recipient address — who gets paid</label>
+      <input id="subTo" placeholder="0x…" spellcheck="false"/>
+      <label>Amount per period (USDC)</label>
+      <input id="subAmt" placeholder="10.00" inputmode="decimal"/>
+      <label>Billing period</label>
+      <div class="row" id="subIntervalRow">
+        <button class="connect-btn" data-sec="300" onclick="pickInterval(this)">5 min (test)</button>
+        <button class="connect-btn" data-sec="86400" onclick="pickInterval(this)">Daily</button>
+        <button class="connect-btn" data-sec="604800" onclick="pickInterval(this)">Weekly</button>
+        <button class="connect-btn primary" data-sec="2592000" onclick="pickInterval(this)">Monthly</button>
+      </div>
+      <label>Label — shows in both parties' lists</label>
+      <input id="subLabel" placeholder="Pro plan / kira / DAO aidatı" maxlength="64"/>
+      <div class="row">
+        <button class="connect-btn primary" onclick="createSub()">Subscribe — first period charged now</button>
+      </div>
+      <div class="status" id="subStatus"></div>
+      <div class="hint">Funds never leave your wallet upfront. You approve USDC once; each period is pulled only when due. Cancel anytime — one click, on-chain.</div>
+    </div>
+
+    <div class="card">
+      <h2>📤 My subscriptions <span style="font-weight:400;font-size:12px;color:var(--muted)">(I pay)</span></h2>
+      <div id="mySubsList"><p class="empty">Connect & load to see subscriptions you're paying.</p></div>
+      <div class="row"><button class="connect-btn" onclick="loadSubs()">↻ Load</button></div>
+    </div>
+
+    <div class="card">
+      <h2>📥 My subscribers <span style="font-weight:400;font-size:12px;color:var(--muted)">(they pay me)</span></h2>
+      <div id="myMerchList"><p class="empty">Connect & load to see who's subscribed to you.</p></div>
+      <div class="row">
+        <button class="connect-btn primary" onclick="collectDue()">💰 Collect all due payments</button>
+        <button class="connect-btn" id="autoCollectBtn" onclick="toggleAutoCollect()">🤖 Auto-collector: OFF</button>
+      </div>
+      <div class="status" id="merchStatus"></div>
+      <div class="hint">Anyone can trigger a due charge — leave the auto-collector on and this page becomes your billing robot, charging subscribers the moment payments come due.</div>
+    </div>
+  </div>
+
 </div>
 
 <footer>
@@ -735,6 +778,202 @@ window.payIncoming=payIncoming; window.sendSplit=sendSplit; window.pickPreset=pi
 window.pickWindow=pickWindow; window.sendRecallable=sendRecallable; window.loadRecalls=loadRecalls;
 window.claimPay=claimPay; window.recallPay=recallPay;
 window.estimateCcipFee=estimateCcipFee; window.sendCcip=sendCcip; window.loadSepoliaMessages=loadSepoliaMessages;
+
+/* ===== ArcSub — subscriptions ===== */
+const ARCSUB = '0x015f65293c936741588dC03ebDD1A193D62535eC';
+const USDC_ERC20 = '0x3600000000000000000000000000000000000000';
+const SUB_ABI = [
+  'function subscribe(address merchant, uint96 amount, uint32 interval, string label) returns (uint256)',
+  'function charge(uint256 id)',
+  'function chargeMany(uint256[] ids)',
+  'function cancel(uint256 id)',
+  'function listBySubscriber(address a) view returns (uint256[])',
+  'function listByMerchant(address a) view returns (uint256[])',
+  'function getSub(uint256 id) view returns (address subscriber, address merchant, uint96 amount, uint32 interval, uint40 nextChargeAt, bool active, string label)',
+  'event Charged(uint256 indexed id, address indexed merchant, uint96 amount, uint40 nextCharge)'
+];
+const ERC20_MIN_ABI = [
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint256)'
+];
+let subInterval = 2592000;
+let merchSubsCache = [];
+let autoCollectTimer = null;
+
+function pickInterval(btn){
+  document.querySelectorAll('#subIntervalRow .connect-btn').forEach(b=>b.classList.remove('primary'));
+  btn.classList.add('primary');
+  subInterval = parseInt(btn.dataset.sec);
+}
+
+function subDue(s){ return s.active && (Date.now()/1000) >= Number(s.nextChargeAt); }
+function subLeft(s){
+  const left = Number(s.nextChargeAt) - Math.floor(Date.now()/1000);
+  if (left <= 0) return 'DUE NOW';
+  const d = Math.floor(left/86400), h = Math.floor(left%86400/3600), m = Math.floor(left%3600/60);
+  return d>0 ? `${d}d ${h}h` : h>0 ? `${h}h ${m}m` : `${m}m`;
+}
+function intervalName(sec){
+  sec = Number(sec);
+  if (sec === 300) return '5 min';
+  if (sec === 86400) return 'daily';
+  if (sec === 604800) return 'weekly';
+  if (sec === 2592000) return 'monthly';
+  return sec + 's';
+}
+
+async function ensureSubAllowance(minAmount){
+  const usdc = new ethers.Contract(USDC_ERC20, ERC20_MIN_ABI, signer);
+  const cur = await usdc.allowance(userAddress, ARCSUB);
+  if (cur >= minAmount) return;
+  setStatus('subStatus','Approve USDC for recurring pulls…');
+  const tx = await usdc.approve(ARCSUB, ethers.MaxUint256);
+  await tx.wait();
+}
+
+async function createSub(){
+  if (!ARCSUB){ setStatus('subStatus','ArcSub contract not deployed yet.','err'); return; }
+  if (!signer){ await connect(); if(!signer) return; }
+  const to = validAddr($('subTo').value);
+  const amt = parseFloat($('subAmt').value);
+  const label = $('subLabel').value.trim() || 'subscription';
+  if (!to){ setStatus('subStatus','Enter a valid merchant address.','err'); return; }
+  if (!amt || isNaN(amt)){ setStatus('subStatus','Enter a valid amount.','err'); return; }
+  try{
+    const amount = ethers.parseUnits(amt.toFixed(6), 6);
+    await ensureSubAllowance(amount);
+    setStatus('subStatus','Confirm subscription — first period is charged now…');
+    const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
+    const tx = await c.subscribe(to, amount, subInterval, label);
+    const rc = await tx.wait();
+    setStatus('subStatus',`✓ Subscribed — ${amt} USDC ${intervalName(subInterval)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    toast('✓ Subscription live');
+    loadSubs();
+  }catch(e){ setStatus('subStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+}
+
+async function fetchSubs(ids){
+  const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
+  const out = [];
+  for (const id of ids){
+    try{
+      const s = await c.getSub(id);
+      out.push({ id: id.toString(), subscriber: s.subscriber, merchant: s.merchant,
+        amount: s.amount, interval: s.interval, nextChargeAt: s.nextChargeAt,
+        active: s.active, label: s.label });
+    }catch{}
+  }
+  return out;
+}
+
+function subRow(s, mine){
+  const amt = Number(ethers.formatUnits(s.amount,6)).toFixed(2);
+  const who = mine ? ('to ' + short(s.merchant)) : ('from ' + short(s.subscriber));
+  const state = !s.active ? '<span style="color:var(--muted)">cancelled</span>'
+    : subDue(s) ? '<span style="color:var(--amber)">DUE NOW</span>'
+    : '<span style="color:var(--green)">next in ' + subLeft(s) + '</span>';
+  const btn = !s.active ? ''
+    : mine ? `<button class="connect-btn" onclick="cancelSub('${s.id}')">Cancel</button>`
+    : subDue(s) ? `<button class="connect-btn primary" onclick="chargeSub('${s.id}')">Charge now</button>`
+                : `<button class="connect-btn" onclick="cancelSub('${s.id}')">Cancel</button>`;
+  return `<div class="receipt" style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px;">
+    <div style="min-width:0;">
+      <b>${escHtml(s.label||'subscription')}</b> · ${amt} USDC / ${intervalName(s.interval)}<br/>
+      <span style="color:var(--muted);font-size:12px;">#${s.id} · ${who} · ${state}</span>
+    </div>
+    <div>${btn}</div>
+  </div>`;
+}
+
+async function loadSubs(){
+  if (!ARCSUB){ toast('ArcSub not deployed yet'); return; }
+  if (!userAddress){ await connect(); if(!userAddress) return; }
+  const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
+  try{
+    const [myIds, merchIds] = await Promise.all([
+      c.listBySubscriber(userAddress), c.listByMerchant(userAddress)
+    ]);
+    const mine = await fetchSubs(myIds);
+    merchSubsCache = await fetchSubs(merchIds);
+
+    $('mySubsList').innerHTML = mine.length
+      ? mine.map(s=>subRow(s,true)).join('')
+      : '<p class="empty">No subscriptions yet.</p>';
+
+    const activeMerch = merchSubsCache.filter(s=>s.active);
+    const monthly = activeMerch.reduce((t,s)=> t + Number(ethers.formatUnits(s.amount,6)) * (2592000/Number(s.interval)), 0);
+    $('myMerchList').innerHTML = (activeMerch.length
+      ? `<div class="hint" style="margin-bottom:10px;">Active subscribers: <b>${activeMerch.length}</b> · est. monthly revenue: <b>${monthly.toFixed(2)} USDC</b></div>`
+      : '') + (merchSubsCache.length
+      ? merchSubsCache.map(s=>subRow(s,false)).join('')
+      : '<p class="empty">Nobody subscribed to you yet. Share your address with a label 😎</p>');
+  }catch(e){ toast('Load failed: '+(e.shortMessage||e.message||'').slice(0,60)); }
+}
+
+async function chargeSub(id){
+  if (!signer){ await connect(); if(!signer) return; }
+  try{
+    setStatus('merchStatus','Confirm charge…');
+    const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
+    const tx = await c.charge(id);
+    const rc = await tx.wait();
+    setStatus('merchStatus',`✓ Charged #${id} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    toast('✓ Payment collected');
+    loadSubs();
+  }catch(e){ setStatus('merchStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+}
+
+async function cancelSub(id){
+  if (!signer){ await connect(); if(!signer) return; }
+  try{
+    const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
+    const tx = await c.cancel(id);
+    await tx.wait();
+    toast('✓ Subscription cancelled');
+    loadSubs();
+  }catch(e){ toast('Cancel failed: '+(e.shortMessage||e.message||'').slice(0,60)); }
+}
+
+async function collectDue(){
+  if (!signer){ await connect(); if(!signer) return; }
+  await loadSubs();
+  const due = merchSubsCache.filter(subDue).map(s=>s.id);
+  if (!due.length){ setStatus('merchStatus','Nothing due right now.'); return; }
+  try{
+    setStatus('merchStatus',`Collecting ${due.length} due payment(s)…`);
+    const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
+    const tx = await c.chargeMany(due);
+    const rc = await tx.wait();
+    setStatus('merchStatus',`✓ Collected ${due.length} payment(s) · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    toast('✓ All due payments collected');
+    loadSubs();
+  }catch(e){ setStatus('merchStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+}
+
+function toggleAutoCollect(){
+  if (autoCollectTimer){
+    clearInterval(autoCollectTimer); autoCollectTimer = null;
+    $('autoCollectBtn').textContent = '🤖 Auto-collector: OFF';
+    toast('Auto-collector stopped');
+  } else {
+    $('autoCollectBtn').textContent = '🤖 Auto-collector: ON';
+    toast('Auto-collector running — checks every 60s');
+    autoCollectTimer = setInterval(async ()=>{
+      if (!signer || !ARCSUB) return;
+      try{
+        await loadSubs();
+        const due = merchSubsCache.filter(subDue).map(s=>s.id);
+        if (due.length){
+          const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
+          const tx = await c.chargeMany(due);
+          await tx.wait();
+          toast(`🤖 Auto-collected ${due.length} payment(s)`);
+          loadSubs();
+        }
+      }catch{}
+    }, 60000);
+  }
+}
 </script>
 </body>
 </html>
