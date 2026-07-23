@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ArcPay — USDC-native payments on Arc</title>
+<title>Pay on Arc — USDC-native payments</title>
 <meta name="description" content="Send USDC, create payment links, split bills, bridge messages cross-chain and track gas — all native on Arc Testnet, ~$0.01 per tx."/>
-<meta property="og:title" content="ArcPay — USDC-native payments on Arc"/>
+<meta property="og:title" content="Pay on Arc — USDC-native payments"/>
 <meta property="og:description" content="Payment links, split payments, cross-chain messaging via Chainlink CCIP, live gas tracker & on-chain receipts on Arc Testnet."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -58,7 +58,7 @@ textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .status.ok{color:var(--green);}
 .status.err{color:var(--red);}
 .status a{color:var(--accent);}
-/* receipt — ArcPay'in imzası */
+/* receipt — Pay on Arc'ın imzası */
 .receipt{background:var(--bg3);border:0.5px dashed var(--border2);border-radius:4px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;position:relative;margin-top:14px;}
 .receipt::before,.receipt::after{content:'';position:absolute;left:0;right:0;height:8px;background-image:radial-gradient(circle at 8px 0px, var(--bg) 5px, transparent 5px);background-size:16px 8px;}
 .receipt::before{top:-1px;}
@@ -93,7 +93,7 @@ footer a:hover{color:var(--accent);}
 
 <header>
   <div class="wrap">
-    <div class="logo">Arc<em>Pay</em></div>
+    <div class="logo">Pay <em>on Arc</em></div>
     <div class="hright">
       <span class="pill gas" id="gasPill">⛽ — gwei</span>
       <span class="pill" id="balPill" style="display:none;"></span>
@@ -199,7 +199,7 @@ footer a:hover{color:var(--accent);}
         <span class="chip">Ethereum Sepolia</span>
         <span style="color:var(--dim);">· via Chainlink CCIP</span>
       </div>
-      <label>Destination — your ArcPayReceiver contract on Sepolia</label>
+      <label>Destination — your receiver contract on Sepolia</label>
       <input id="ccReceiver" value="0x8D77a145a238Aa36f2b20027b353cF1E981B569F" spellcheck="false"/>
       <label>Message — travels cross-chain with your transaction</label>
       <input id="ccMsg" placeholder="gm from Arc 👋" maxlength="120"/>
@@ -231,7 +231,7 @@ footer a:hover{color:var(--accent);}
   <div class="section" id="sec-agent">
     <div class="card">
       <h2>🤖 Billing agent — subscriptions collect themselves</h2>
-      <div class="hint" style="margin-bottom:14px;">A tiny on-chain worker with its own wallet, living in this page. While it's online, it watches ArcSub and charges every due subscription <b>by itself</b> — no MetaMask, no clicks, no human. Subscribers pay while everyone sleeps. Burner key stays in this browser · testnet only.</div>
+      <div class="hint" style="margin-bottom:14px;">A tiny on-chain worker with its own wallet, living in this page. While it's online, it watches the subscription contract and charges every due subscription <b>by itself</b> — no MetaMask, no clicks, no human. Subscribers pay while everyone sleeps. Burner key stays in this browser · testnet only.</div>
       <div class="receipt" style="margin-bottom:12px;">
         Agent address: <b id="kpAddr" style="word-break:break-all;">—</b><br/>
         <span style="color:var(--muted);font-size:12px;">Gas balance: <b id="kpGas">—</b> · pays only tx fees; subscription money flows subscriber → merchant directly</span>
@@ -260,7 +260,7 @@ footer a:hover{color:var(--accent);}
     <div class="card">
       <h2>Your receipts</h2>
       <div class="row" style="margin-top:0;"><button class="connect-btn" onclick="loadHistory()">↻ Load from chain</button></div>
-      <div id="histList"><p class="empty">Connect your wallet and load — every ArcPay payment you sent or received, straight from the chain.</p></div>
+      <div id="histList"><p class="empty">Connect your wallet and load — every Pay on Arc payment you sent or received, straight from the chain.</p></div>
     </div>
   </div>
   <!-- SUBSCRIPTIONS -->
@@ -309,7 +309,7 @@ footer a:hover{color:var(--accent);}
 
 <footer>
   <div class="wrap">
-    Built by <a href="https://x.com/Dnyelfy" target="_blank" rel="noreferrer">@Dnyelfy</a> · contract <a id="cLink" href="#" target="_blank" rel="noreferrer">ArcPay</a> · Arc Testnet<br/>
+    Built by <a href="https://x.com/Dnyelfy" target="_blank" rel="noreferrer">@Dnyelfy</a> · contract <a id="cLink" href="#" target="_blank" rel="noreferrer">Pay on Arc</a> · Arc Testnet<br/>
     More Arc tools → <a href="https://arc-wallet-check.vercel.app" target="_blank" rel="noreferrer">Wallet Check</a> · <a href="https://arcvote-one.vercel.app/arc-dapp.html" target="_blank" rel="noreferrer">Quest Hub</a> · <a href="https://arc-agent-forge.vercel.app" target="_blank" rel="noreferrer">Agent Forge</a>
   </div>
 </footer>
@@ -318,7 +318,7 @@ footer a:hover{color:var(--accent);}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
 <script>
-const ARCPAY = '0x418E2c81b0E90C98780494c62C73452657CA979b'; // ArcPay V2
+const ARCPAY = '0x418E2c81b0E90C98780494c62C73452657CA979b'; // Pay on Arc payment contract (V2)
 const RPC = 'https://rpc.testnet.arc.network';
 const CHAIN_ID = 5042002;
 const SCAN = 'https://testnet.arcscan.app';
@@ -390,7 +390,7 @@ async function disconnect(){
   $('connBtn').onclick = connect;
   $('connBtn').title = '';
   $('balPill').style.display = 'none';
-  $('histList').innerHTML = '<p class="empty">Connect your wallet and load — every ArcPay payment you sent or received, straight from the chain.</p>';
+  $('histList').innerHTML = '<p class="empty">Connect your wallet and load — every Pay on Arc payment you sent or received, straight from the chain.</p>';
   $('rcList').innerHTML = '<p class="empty">Connect & load — outgoing payments show a recall countdown, incoming ones a claim button.</p>';
   rcItems = [];
   toast('Disconnected');
@@ -503,8 +503,8 @@ const CCIP_ABI = [
   'function ccipSend(uint64 destinationChainSelector, (bytes receiver, bytes data, (address token, uint256 amount)[] tokenAmounts, address feeToken, bytes extraArgs) message) payable returns (bytes32)'
 ];
 
-// Our ArcPayReceiver contract, deployed on Ethereum Sepolia.
-// Messages sent from ArcPay land here, get stored, and emit an event.
+// Our receiver contract, deployed on Ethereum Sepolia.
+// Messages sent from Pay on Arc land here, get stored, and emit an event.
 const SEPOLIA_RECEIVER = '0x8D77a145a238Aa36f2b20027b353cF1E981B569F';
 const SEPOLIA_RPC = 'https://ethereum-sepolia-rpc.publicnode.com';
 const SEPOLIA_SCAN = 'https://sepolia.etherscan.io';
@@ -549,7 +549,7 @@ async function estimateCcipFee(){
 async function sendCcip(){
   if(!signer){ await connect(); if(!signer) return; }
   const receiver = validAddr($('ccReceiver').value) || SEPOLIA_RECEIVER;
-  if(!receiver){ setStatus('ccStatus','Enter a destination address, or leave empty to use the ArcPay receiver contract.','err'); return; }
+  if(!receiver){ setStatus('ccStatus','Enter a destination address, or leave empty to use the Pay on Arc receiver contract.','err'); return; }
   const text = $('ccMsg').value.trim() || 'gm from Arc';
   try{
     setStatus('ccStatus','Estimating fee…');
@@ -566,7 +566,7 @@ async function sendCcip(){
   }catch(e){ setStatus('ccStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,130),'err'); }
 }
 
-/* Read messages that have landed in the ArcPayReceiver contract on Sepolia */
+/* Read messages that have landed in the receiver contract on Sepolia */
 async function loadSepoliaMessages(){
   const box = $('ccInbox');
   box.innerHTML = '<p class="empty">Reading your receiver contract on Ethereum Sepolia…</p>';
@@ -644,7 +644,7 @@ async function loadHistory(){
         <div class="r-line"><span>${out?'to':'from'}</span><b>${short(out?ev.args.to:ev.args.from)}</b></div>
         ${ev.args.note ? `<div class="r-line"><span>note</span><b>${escHtml(ev.args.note)}</b></div>` : ''}
         <div class="r-line"><span>block</span><b>${l.blockNumber} · <a href="${SCAN}/tx/${l.transactionHash}" target="_blank" rel="noreferrer" style="color:var(--accent)">tx ↗</a></b></div>
-        <div class="r-foot">arcpay · on-chain receipt</div>
+        <div class="r-foot">pay on arc · on-chain receipt</div>
       </div>`;
     }).join('');
   }catch(e){
@@ -738,7 +738,7 @@ function renderRecalls(){
       ${p.note ? `<div class="r-line"><span>note</span><b>${escHtml(p.note)}</b></div>` : ''}
       <div class="r-line"><span>status</span><b>${badge}</b></div>
       ${action ? `<div class="row" style="justify-content:center;margin-top:10px;">${action}</div>` : ''}
-      <div class="r-foot">arcpay · recallable #${p.id}</div>
+      <div class="r-foot">pay on arc · recallable #${p.id}</div>
     </div>`;
   }).join('');
 }
@@ -768,7 +768,7 @@ window.pickWindow=pickWindow; window.sendRecallable=sendRecallable; window.loadR
 window.claimPay=claimPay; window.recallPay=recallPay;
 window.estimateCcipFee=estimateCcipFee; window.sendCcip=sendCcip; window.loadSepoliaMessages=loadSepoliaMessages;
 
-/* ===== ArcSub — subscriptions ===== */
+/* ===== Subscriptions contract ===== */
 const ARCSUB = '0x015f65293c936741588dC03ebDD1A193D62535eC';
 const USDC_ERC20 = '0x3600000000000000000000000000000000000000';
 const SUB_ABI = [
@@ -821,7 +821,7 @@ async function ensureSubAllowance(minAmount){
 }
 
 async function createSub(){
-  if (!ARCSUB){ setStatus('subStatus','ArcSub contract not deployed yet.','err'); return; }
+  if (!ARCSUB){ setStatus('subStatus','Subscription contract not deployed yet.','err'); return; }
   if (!signer){ await connect(); if(!signer) return; }
   const to = validAddr($('subTo').value);
   const amt = parseFloat($('subAmt').value);
@@ -875,7 +875,7 @@ function subRow(s, mine){
 }
 
 async function loadSubs(){
-  if (!ARCSUB){ toast('ArcSub not deployed yet'); return; }
+  if (!ARCSUB){ toast('Subscription contract not deployed yet'); return; }
   if (!userAddress){ await connect(); if(!userAddress) return; }
   const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
   try{
@@ -964,7 +964,7 @@ function toggleAutoCollect(){
   }
 }
 
-/* ===== Billing agent (ArcSub keeper) ===== */
+/* ===== Billing agent (subscriptions keeper) ===== */
 const KP_KEY = 'arcpayKeeperKey_v1';
 const KP_ABI = [
   'function nextId() view returns (uint256)',
@@ -1031,7 +1031,7 @@ function kpStart(){
   if (kpTimer) return;
   kpTimer = setInterval(kpTick, 15000);
   kpTick();
-  $('kpState').textContent = '🟢 agent ONLINE — scanning ArcSub every 15s';
+  $('kpState').textContent = '🟢 agent ONLINE — scanning subscriptions every 15s';
   kpLog('▶ Agent started.','ok');
 }
 function kpStop(){
