@@ -309,12 +309,12 @@ footer a:hover{color:var(--accent);}
   <!-- TREASURY -->
   <div class="section" id="sec-treasury">
     <div class="card">
-      <h2>💶 Treasury agent — reads Pyth, holds the line</h2>
-      <div class="hint" style="margin-bottom:16px;">Your treasury sits in USDC, but its real-world worth drifts every time EUR/USD moves. This agent watches the <b>Pyth EUR/USD</b> feed and, when your euro-denominated value slips out of band, rebalances on-chain — no human at the wheel. Live oracle · Arc Testnet.</div>
+      <h2>💶 Treasury agent — reads Pyth, holds the mix</h2>
+      <div class="hint" style="margin-bottom:16px;">The treasury holds two stablecoins — <b>USDC</b> and <b>EURC</b> — and tries to keep a fixed value split between them. Every EUR/USD tick shifts that split, so the agent reads the <b>Pyth EUR/USD</b> feed and, when the mix drifts out of band, lets any keeper settle it back on-chain. Live oracle · Arc Testnet.</div>
       <div class="lane" style="margin-bottom:2px;">
         <span class="chip">Pyth oracle</span><span class="arrow">→</span>
         <span class="chip arc">Treasury agent</span><span class="arrow">→</span>
-        <span class="chip">USDC on Arc</span>
+        <span class="chip">USDC ⇄ EURC</span>
       </div>
       <div class="gasbig" style="margin-top:20px;">
         <b id="eurRate">—</b>
@@ -329,31 +329,38 @@ footer a:hover{color:var(--accent);}
 
     <div class="card">
       <h2>Treasury health</h2>
-      <div class="row" style="align-items:flex-end;margin-top:0;">
-        <div style="flex:1;min-width:150px;">
-          <label>Value to hold (EUR)</label>
-          <input id="tgtEur" placeholder="1000" inputmode="decimal" value="1000"/>
-        </div>
-        <div style="flex:1;min-width:110px;">
-          <label>Band (± %)</label>
-          <input id="tgtBand" placeholder="2" inputmode="decimal" value="2"/>
-        </div>
+      <div class="row" style="margin-top:0;">
         <button class="connect-btn" onclick="treasuryScan()">↻ Check treasury</button>
       </div>
       <div class="receipt" id="treasuryReceipt" style="margin-top:16px;">
-        <div class="r-line"><span>Treasury balance</span><b id="tUsdc">—</b></div>
-        <div class="r-line"><span>EUR / USD (Pyth)</span><b id="tRate">—</b></div>
-        <div class="r-amt" id="tEurVal">€—</div>
+        <div class="r-line"><span>USDC balance</span><b id="tUsdc">—</b></div>
+        <div class="r-line"><span>EURC balance</span><b id="tEurc">—</b></div>
+        <div class="r-amt" id="tAlloc" style="font-size:18px;">— / —</div>
         <div class="r-sep"></div>
-        <div class="r-line"><span>Target</span><b id="tTarget">—</b></div>
-        <div class="r-line"><span>Drift from target</span><b id="tDrift">—</b></div>
+        <div class="r-line"><span>Target mix</span><b id="tTarget">—</b></div>
+        <div class="r-line"><span>Current drift</span><b id="tDrift">—</b></div>
         <div class="r-foot" id="tVerdict">connect &amp; check</div>
       </div>
-      <div class="row">
+      <div class="hint" id="tKeeper" style="margin-top:12px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Fund &amp; rebalance</h2>
+      <div class="hint" style="margin-bottom:14px;">A ratio needs both sides, so seed the treasury with USDC and EURC. Then anyone can be the <b>keeper</b>: supply the short side, receive the other plus a small bonus — that incentive is what makes the agent run without a babysitter.</div>
+      <div class="row" style="align-items:flex-end;margin-top:0;">
+        <div style="flex:1;min-width:150px;">
+          <label>Deposit amount</label>
+          <input id="tDepAmt" placeholder="50.00" inputmode="decimal"/>
+        </div>
+        <button class="connect-btn" onclick="treasuryDeposit('usdc')">↓ Fund USDC</button>
+        <button class="connect-btn" onclick="treasuryDeposit('eurc')">↓ Fund EURC</button>
+      </div>
+      <div class="row" style="margin-top:16px;">
         <button class="connect-btn primary" onclick="treasuryRebalance()">⚖ Run rebalance</button>
+        <button class="connect-btn" onclick="treasuryScan()">↻ Refresh health</button>
       </div>
       <div class="status" id="tStatus"></div>
-      <div class="hint">Anyone can poke the agent — the on-chain logic only moves funds when drift actually breaks the band, so a poke while in-band is a harmless no-op. Agent <a href="https://testnet.arcscan.app/address/0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53" target="_blank" rel="noreferrer" style="color:var(--accent)">0xC99f…3eA53 ↗</a>.</div>
+      <div class="hint" style="margin-top:12px;">Rebalance pulls a fresh Pyth update on-chain (tiny USDC gas fee), refuses if confidence is too wide, and only moves funds when drift breaks the band. Agent <a href="https://testnet.arcscan.app/address/0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53" target="_blank" rel="noreferrer" style="color:var(--accent)">0xC99f…3eA53 ↗</a> · Pyth <span style="color:var(--muted)">0x2880…7B43</span>.</div>
     </div>
   </div>
 
@@ -1128,14 +1135,24 @@ function kpReset(){
 
 window.kpStart=kpStart; window.kpStop=kpStop; window.kpFund=kpFund; window.kpSweep=kpSweep; window.kpReset=kpReset;
 
-/* ===== Treasury agent (Pyth EUR/USD) ===== */
+/* ===== Treasury agent (Pyth EUR/USD · USDC⇄EURC ratio) ===== */
 const TREASURY = '0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53';
+const EURC = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+const PYTH = '0x2880aB155794e7179c9eE2e38200202908C17B43';
 const PYTH_EURUSD_ID = '0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b';
 const HERMES = 'https://hermes.pyth.network/v2/updates/price/latest';
-// ⚠️ Only rebalance() is a write — swap the name here if your deployed agent calls it something else.
-const TREASURY_ABI = ['function rebalance()'];
-const ERC20_BAL_ABI = ['function balanceOf(address) view returns (uint256)'];
-let eurUsd = null, pythTimer = null, tUsdcNum = null;
+const TREASURY_ABI = [
+  'function rebalance(bytes[] updateData) payable',
+  'function deposit(address token, uint256 amount)',
+  'function getStatus() view returns (uint256 usdcBal, uint256 eurcBal, uint16 targetUsdcBps, uint16 driftBps, uint16 maxConfBps, uint16 keeperBonusBps, bool paused)'
+];
+const PYTH_FEE_ABI = ['function getUpdateFee(bytes[] updateData) view returns (uint256)'];
+const ERC20_T_ABI = [
+  'function balanceOf(address) view returns (uint256)',
+  'function allowance(address,address) view returns (uint256)',
+  'function approve(address,uint256) returns (bool)'
+];
+let eurUsd = null, pythTimer = null, tState = null;
 
 async function pythRefresh(){
   $('eurMeta').textContent = 'fetching…';
@@ -1149,8 +1166,7 @@ async function pythRefresh(){
     const ago = Math.max(0, Math.floor(Date.now()/1000) - Number(p.publish_time));
     $('eurRate').textContent = eurUsd.toFixed(5);
     $('eurMeta').textContent = `±${conf.toFixed(5)} · ${ago}s ago`;
-    $('tRate').textContent = eurUsd.toFixed(5);
-    if(tUsdcNum !== null) recomputeHealth();
+    if(tState) renderHealth();
     return eurUsd;
   }catch(e){
     $('eurMeta').textContent = 'feed error';
@@ -1173,53 +1189,136 @@ function pythToggleLive(){
   }
 }
 
-async function treasuryScan(){
-  try{
-    setStatus('tStatus','Reading treasury balance & Pyth feed…');
-    const erc = new ethers.Contract(USDC_ERC20, ERC20_BAL_ABI, readProvider);
-    let bal6 = 0, native = 0;
-    try{ bal6 = Number(ethers.formatUnits(await erc.balanceOf(TREASURY), 6)); }catch(_){}
-    try{ native = Number(ethers.formatEther(await readProvider.getBalance(TREASURY))); }catch(_){}
-    tUsdcNum = bal6 > 0 ? bal6 : native;   // whichever the agent actually holds
-    $('tUsdc').textContent = tUsdcNum.toLocaleString('en-US',{maximumFractionDigits:2}) + ' USDC';
-    if(eurUsd === null) await pythRefresh();
-    recomputeHealth();
-    setStatus('tStatus','');
-  }catch(e){ setStatus('tStatus','Read failed: '+(e.shortMessage||e.message||'').slice(0,80),'err'); }
+// Pull the signed Pyth update blob (VAA) needed to move the price on-chain.
+async function pythUpdateData(){
+  const r = await fetch(`${HERMES}?ids[]=${PYTH_EURUSD_ID}&encoding=hex`);
+  const j = await r.json();
+  const arr = j.binary?.data || [];
+  if(!arr.length) throw new Error('no Pyth update data');
+  return arr.map(h => h.startsWith('0x') ? h : '0x'+h);
 }
 
-function recomputeHealth(){
-  if(tUsdcNum === null || eurUsd === null) return;
-  const eurVal = tUsdcNum / eurUsd;                       // USDC ≈ USD → EUR
-  const target = parseFloat($('tgtEur').value) || 0;
-  const band = (parseFloat($('tgtBand').value) || 0) / 100;
-  $('tRate').textContent = eurUsd.toFixed(5);
-  $('tEurVal').textContent = '€' + eurVal.toLocaleString('en-US',{maximumFractionDigits:2});
-  $('tTarget').textContent = target ? '€'+target.toLocaleString('en-US',{maximumFractionDigits:2})+' ±'+($('tgtBand').value||'0')+'%' : '—';
-  if(!target){ $('tDrift').textContent='—'; $('tVerdict').textContent='set a target'; return; }
-  const drift = (eurVal - target) / target, pct = drift * 100;
-  $('tDrift').innerHTML = `<span style="color:${Math.abs(drift)>band?'var(--amber)':'var(--green)'}">${pct>=0?'+':''}${pct.toFixed(2)}%</span>`;
-  $('tVerdict').innerHTML = Math.abs(drift) > band
-    ? `<span style="color:var(--amber)">REBALANCE DUE — ${pct>0?'over':'under'} band</span>`
-    : `<span style="color:var(--green)">IN BAND — agent rests</span>`;
+async function treasuryScan(){
+  try{
+    setStatus('tStatus','Reading treasury status on-chain…');
+    const c = new ethers.Contract(TREASURY, TREASURY_ABI, readProvider);
+    const s = await c.getStatus();
+    tState = {
+      usdc: Number(ethers.formatUnits(s.usdcBal, 6)),
+      eurc: Number(ethers.formatUnits(s.eurcBal, 6)),
+      targetBps: Number(s.targetUsdcBps),
+      driftBps: Number(s.driftBps),
+      maxConfBps: Number(s.maxConfBps),
+      bonusBps: Number(s.keeperBonusBps),
+      paused: s.paused
+    };
+    if(eurUsd === null) await pythRefresh();
+    renderHealth();
+    setStatus('tStatus','');
+  }catch(e){ setStatus('tStatus','Read failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+}
+
+// Mirror the contract's own valuation: value both legs in USD, compare the USDC share to target.
+function treasuryMath(){
+  const s = tState;
+  const eurcUsd = s.eurc * eurUsd;          // EURC → USD via Pyth
+  const total = s.usdc + eurcUsd;
+  const curBps = total > 0 ? (s.usdc / total) * 10000 : 0;
+  const drift = Math.abs(curBps - s.targetBps);
+  return { eurcUsd, total, curBps, drift, inBand: drift <= s.driftBps, overUsdc: curBps > s.targetBps };
+}
+
+function renderHealth(){
+  if(!tState || eurUsd === null) return;
+  const s = tState, m = treasuryMath();
+  $('tUsdc').textContent = s.usdc.toLocaleString('en-US',{maximumFractionDigits:2}) + ' USDC';
+  $('tEurc').textContent = s.eurc.toLocaleString('en-US',{maximumFractionDigits:2}) + ' EURC';
+  $('tAlloc').textContent = (m.curBps/100).toFixed(1)+'% USDC · '+((10000-m.curBps)/100).toFixed(1)+'% EURC';
+  $('tTarget').textContent = (s.targetBps/100)+'% USDC ±'+(s.driftBps/100)+'%';
+  $('tDrift').innerHTML = `<span style="color:${m.inBand?'var(--green)':'var(--amber)'}">${(m.drift/100).toFixed(2)}%</span>`;
+  if(s.paused)               $('tVerdict').innerHTML = '<span style="color:var(--red)">PAUSED by owner</span>';
+  else if(m.total === 0)     $('tVerdict').innerHTML = '<span style="color:var(--muted)">EMPTY — fund the treasury below</span>';
+  else if(m.inBand)          $('tVerdict').innerHTML = '<span style="color:var(--green)">IN BAND — agent rests</span>';
+  else                       $('tVerdict').innerHTML = `<span style="color:var(--amber)">REBALANCE DUE — over ${m.overUsdc?'USDC':'EURC'}</span>`;
+
+  const kp = $('tKeeper');
+  if(!s.paused && m.total > 0 && !m.inBand){
+    const tradeUsd = (m.drift/10000) * m.total;
+    if(m.overUsdc){
+      const eurcIn = tradeUsd / eurUsd, usdcOut = tradeUsd * (1 + s.bonusBps/10000);
+      kp.innerHTML = `Keeper move → supply <b>${eurcIn.toFixed(2)} EURC</b>, receive <b>${usdcOut.toFixed(2)} USDC</b> (incl. ${(s.bonusBps/100)}% bonus). You need that EURC in your wallet to settle it.`;
+    }else{
+      const usdcIn = tradeUsd, eurcOut = (tradeUsd * (1 + s.bonusBps/10000)) / eurUsd;
+      kp.innerHTML = `Keeper move → supply <b>${usdcIn.toFixed(2)} USDC</b>, receive <b>${eurcOut.toFixed(2)} EURC</b> (incl. ${(s.bonusBps/100)}% bonus). You need that USDC in your wallet to settle it.`;
+    }
+  } else kp.innerHTML = '';
+}
+
+async function treasuryDeposit(which){
+  if(!signer){ await connect(); if(!signer) return; }
+  const amt = parseFloat($('tDepAmt').value);
+  if(!amt || isNaN(amt) || amt <= 0){ setStatus('tStatus','Enter a deposit amount.','err'); return; }
+  const token = which === 'eurc' ? EURC : USDC_ERC20;
+  const sym = which === 'eurc' ? 'EURC' : 'USDC';
+  try{
+    const wei = ethers.parseUnits(amt.toFixed(6), 6);
+    const erc = new ethers.Contract(token, ERC20_T_ABI, signer);
+    if(await erc.allowance(userAddress, TREASURY) < wei){
+      setStatus('tStatus',`Approve ${sym} for the treasury…`);
+      await (await erc.approve(TREASURY, ethers.MaxUint256)).wait();
+    }
+    setStatus('tStatus',`Depositing ${amt} ${sym}…`);
+    const c = new ethers.Contract(TREASURY, TREASURY_ABI, signer);
+    const rc = await (await c.deposit(token, wei)).wait();
+    setStatus('tStatus',`✓ Funded ${amt} ${sym} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    toast(`✓ Treasury funded (${sym})`);
+    treasuryScan();
+  }catch(e){ setStatus('tStatus','Deposit failed: '+(e.shortMessage||e.message||'').slice(0,100),'err'); }
 }
 
 async function treasuryRebalance(){
   if(!signer){ await connect(); if(!signer) return; }
   try{
-    setStatus('tStatus','Confirm — poking the treasury agent to rebalance…');
+    await treasuryScan();
+    if(!tState) return;
+    if(tState.paused){ setStatus('tStatus','Agent is paused by the owner.','err'); return; }
+    const m = treasuryMath();
+
+    setStatus('tStatus','Pulling a fresh Pyth update…');
+    const updateData = await pythUpdateData();
+    const pyth = new ethers.Contract(PYTH, PYTH_FEE_ABI, readProvider);
+    const fee = await pyth.getUpdateFee(updateData);
+
+    // Out of band → a real swap happens and the keeper (you) must front the short side.
+    if(!m.inBand && m.total > 0){
+      const tradeUsd = (m.drift/10000) * m.total;
+      const token = m.overUsdc ? EURC : USDC_ERC20;
+      const sym = m.overUsdc ? 'EURC' : 'USDC';
+      const need = m.overUsdc ? tradeUsd / eurUsd : tradeUsd;
+      const erc = new ethers.Contract(token, ERC20_T_ABI, signer);
+      const bal = Number(ethers.formatUnits(await erc.balanceOf(userAddress), 6));
+      if(bal < need * 1.01){
+        setStatus('tStatus',`To settle this you must supply ~${need.toFixed(2)} ${sym} as keeper, but you hold ${bal.toFixed(2)} ${sym}. Get more ${sym}, or fund the treasury to shrink the gap first.`,'err');
+        return;
+      }
+      const needWei = ethers.parseUnits((need * 2).toFixed(6), 6);
+      if(await erc.allowance(userAddress, TREASURY) < needWei){
+        setStatus('tStatus',`Approve ${sym} so the agent can settle…`);
+        await (await erc.approve(TREASURY, ethers.MaxUint256)).wait();
+      }
+    }
+
+    setStatus('tStatus', m.inBand ? 'In band — poking the agent to refresh price on-chain…' : 'Confirm — settling the rebalance…');
     const c = new ethers.Contract(TREASURY, TREASURY_ABI, signer);
-    const tx = await c.rebalance();
-    const rc = await tx.wait();
-    setStatus('tStatus',`✓ Agent rebalanced · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
-    toast('✓ Treasury rebalanced');
+    const rc = await (await c.rebalance(updateData, { value: fee })).wait();
+    setStatus('tStatus',`✓ Agent ran · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    toast('✓ Treasury agent executed');
     treasuryScan();
-  }catch(e){ setStatus('tStatus','Rebalance failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+  }catch(e){ setStatus('tStatus','Rebalance failed: '+(e.shortMessage||e.message||'').slice(0,120),'err'); }
 }
 
-['tgtEur','tgtBand'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', recomputeHealth); });
 window.pythRefresh=pythRefresh; window.pythAuto=pythAuto; window.pythToggleLive=pythToggleLive;
-window.treasuryScan=treasuryScan; window.treasuryRebalance=treasuryRebalance;
+window.treasuryScan=treasuryScan; window.treasuryRebalance=treasuryRebalance; window.treasuryDeposit=treasuryDeposit;
 </script>
 </body>
 </html>
