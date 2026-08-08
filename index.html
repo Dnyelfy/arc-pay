@@ -1144,7 +1144,11 @@ const HERMES = 'https://hermes.pyth.network/v2/updates/price/latest';
 const TREASURY_ABI = [
   'function rebalance(bytes[] updateData) payable',
   'function deposit(address token, uint256 amount)',
-  'function getStatus() view returns (uint256 usdcBal, uint256 eurcBal, uint16 targetUsdcBps, uint16 driftBps, uint16 maxConfBps, uint16 keeperBonusBps, bool paused)'
+  'function getStatus() view returns (uint256 usdcBal, uint256 eurcBal, uint16 targetUsdcBps, uint16 driftBps, uint16 maxConfBps, uint16 keeperBonusBps, bool paused)',
+  // Pyth custom errors — here only so ethers can name the revert instead of "unknown custom error".
+  'error StalePrice()','error InsufficientFee()','error InvalidUpdateData()','error InvalidUpdateDataSource()',
+  'error NoFreshUpdate()','error PriceFeedNotFound()','error PriceFeedNotFoundWithinRange()','error InvalidArgument()',
+  'error InvalidGovernanceMessage()','error InvalidWormholeVaa()','error PriceFeedAlreadyExists()','error InvalidWormholeAddressToSet()'
 ];
 const PYTH_FEE_ABI = ['function getUpdateFee(bytes[] updateData) view returns (uint256)'];
 const ERC20_T_ABI = [
@@ -1308,8 +1312,17 @@ async function treasuryRebalance(){
       }
     }
 
-    setStatus('tStatus', m.inBand ? 'In band — poking the agent to refresh price on-chain…' : 'Confirm — settling the rebalance…');
     const c = new ethers.Contract(TREASURY, TREASURY_ABI, signer);
+    // Preflight: reproduce the call read-only so we can name the exact revert (esp. Pyth errors).
+    try{
+      await c.rebalance.staticCall(updateData, { value: fee });
+    }catch(sim){
+      const sel = sim.data || sim.info?.error?.data || sim.error?.data || '';
+      const named = sim.revert?.name || sim.reason || sim.shortMessage || sim.message || 'reverted';
+      setStatus('tStatus', `Agent would revert: ${String(named).slice(0,80)}${sel?` [${String(sel).slice(0,10)}]`:''}`,'err');
+      return;
+    }
+    setStatus('tStatus', m.inBand ? 'In band — poking the agent to refresh price on-chain…' : 'Confirm — settling the rebalance…');
     const rc = await (await c.rebalance(updateData, { value: fee })).wait();
     setStatus('tStatus',`✓ Agent ran · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Treasury agent executed');
