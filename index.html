@@ -116,6 +116,7 @@ footer a:hover{color:var(--accent);}
     <button class="tab-btn" onclick="go('agent',this)">🤖 Billing Agent</button>
     <button class="tab-btn" onclick="go('history',this)">🧾 Receipts</button>
     <button class="tab-btn" onclick="go('subs',this)">🔁 Subscriptions</button>
+    <button class="tab-btn" onclick="go('treasury',this);pythAuto()">💶 Treasury</button>
   </div>
 
   <!-- PAY -->
@@ -302,6 +303,57 @@ footer a:hover{color:var(--accent);}
       </div>
       <div class="status" id="merchStatus"></div>
       <div class="hint">Anyone can trigger a due charge — leave the auto-collector on and this page becomes your billing robot, charging subscribers the moment payments come due.</div>
+    </div>
+  </div>
+
+  <!-- TREASURY -->
+  <div class="section" id="sec-treasury">
+    <div class="card">
+      <h2>💶 Treasury agent — reads Pyth, holds the line</h2>
+      <div class="hint" style="margin-bottom:16px;">Your treasury sits in USDC, but its real-world worth drifts every time EUR/USD moves. This agent watches the <b>Pyth EUR/USD</b> feed and, when your euro-denominated value slips out of band, rebalances on-chain — no human at the wheel. Live oracle · Arc Testnet.</div>
+      <div class="lane" style="margin-bottom:2px;">
+        <span class="chip">Pyth oracle</span><span class="arrow">→</span>
+        <span class="chip arc">Treasury agent</span><span class="arrow">→</span>
+        <span class="chip">USDC on Arc</span>
+      </div>
+      <div class="gasbig" style="margin-top:20px;">
+        <b id="eurRate">—</b>
+        <span>EUR / USD · <span id="eurMeta" style="color:var(--dim)">tap refresh</span></span>
+      </div>
+      <div class="row" style="margin-top:14px;">
+        <button class="connect-btn" onclick="pythRefresh()">↻ Refresh price</button>
+        <button class="connect-btn" id="pythLiveBtn" onclick="pythToggleLive()">📡 Live feed: OFF</button>
+      </div>
+      <div class="hint" style="margin-top:10px;">Feed <span style="color:var(--muted)">0xa995…c30b</span> · pulled straight from Pyth Hermes, no key needed.</div>
+    </div>
+
+    <div class="card">
+      <h2>Treasury health</h2>
+      <div class="row" style="align-items:flex-end;margin-top:0;">
+        <div style="flex:1;min-width:150px;">
+          <label>Value to hold (EUR)</label>
+          <input id="tgtEur" placeholder="1000" inputmode="decimal" value="1000"/>
+        </div>
+        <div style="flex:1;min-width:110px;">
+          <label>Band (± %)</label>
+          <input id="tgtBand" placeholder="2" inputmode="decimal" value="2"/>
+        </div>
+        <button class="connect-btn" onclick="treasuryScan()">↻ Check treasury</button>
+      </div>
+      <div class="receipt" id="treasuryReceipt" style="margin-top:16px;">
+        <div class="r-line"><span>Treasury balance</span><b id="tUsdc">—</b></div>
+        <div class="r-line"><span>EUR / USD (Pyth)</span><b id="tRate">—</b></div>
+        <div class="r-amt" id="tEurVal">€—</div>
+        <div class="r-sep"></div>
+        <div class="r-line"><span>Target</span><b id="tTarget">—</b></div>
+        <div class="r-line"><span>Drift from target</span><b id="tDrift">—</b></div>
+        <div class="r-foot" id="tVerdict">connect &amp; check</div>
+      </div>
+      <div class="row">
+        <button class="connect-btn primary" onclick="treasuryRebalance()">⚖ Run rebalance</button>
+      </div>
+      <div class="status" id="tStatus"></div>
+      <div class="hint">Anyone can poke the agent — the on-chain logic only moves funds when drift actually breaks the band, so a poke while in-band is a harmless no-op. Agent <a href="https://testnet.arcscan.app/address/0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53" target="_blank" rel="noreferrer" style="color:var(--accent)">0xC99f…3eA53 ↗</a>.</div>
     </div>
   </div>
 
@@ -1075,6 +1127,99 @@ function kpReset(){
 }
 
 window.kpStart=kpStart; window.kpStop=kpStop; window.kpFund=kpFund; window.kpSweep=kpSweep; window.kpReset=kpReset;
+
+/* ===== Treasury agent (Pyth EUR/USD) ===== */
+const TREASURY = '0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53';
+const PYTH_EURUSD_ID = '0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b';
+const HERMES = 'https://hermes.pyth.network/v2/updates/price/latest';
+// ⚠️ Only rebalance() is a write — swap the name here if your deployed agent calls it something else.
+const TREASURY_ABI = ['function rebalance()'];
+const ERC20_BAL_ABI = ['function balanceOf(address) view returns (uint256)'];
+let eurUsd = null, pythTimer = null, tUsdcNum = null;
+
+async function pythRefresh(){
+  $('eurMeta').textContent = 'fetching…';
+  try{
+    const r = await fetch(`${HERMES}?ids[]=${PYTH_EURUSD_ID}`);
+    const j = await r.json();
+    const p = j.parsed?.[0]?.price;
+    if(!p) throw new Error('no price in feed');
+    eurUsd = Number(p.price) * Math.pow(10, Number(p.expo));
+    const conf = Number(p.conf) * Math.pow(10, Number(p.expo));
+    const ago = Math.max(0, Math.floor(Date.now()/1000) - Number(p.publish_time));
+    $('eurRate').textContent = eurUsd.toFixed(5);
+    $('eurMeta').textContent = `±${conf.toFixed(5)} · ${ago}s ago`;
+    $('tRate').textContent = eurUsd.toFixed(5);
+    if(tUsdcNum !== null) recomputeHealth();
+    return eurUsd;
+  }catch(e){
+    $('eurMeta').textContent = 'feed error';
+    toast('Pyth fetch failed: ' + (e.message||'').slice(0,50));
+    return null;
+  }
+}
+
+function pythAuto(){ if(eurUsd === null) pythRefresh(); }
+
+function pythToggleLive(){
+  if(pythTimer){
+    clearInterval(pythTimer); pythTimer = null;
+    $('pythLiveBtn').textContent = '📡 Live feed: OFF';
+  }else{
+    pythRefresh();
+    pythTimer = setInterval(pythRefresh, 10000);
+    $('pythLiveBtn').textContent = '📡 Live feed: ON';
+    toast('Live EUR/USD — refreshing every 10s');
+  }
+}
+
+async function treasuryScan(){
+  try{
+    setStatus('tStatus','Reading treasury balance & Pyth feed…');
+    const erc = new ethers.Contract(USDC_ERC20, ERC20_BAL_ABI, readProvider);
+    let bal6 = 0, native = 0;
+    try{ bal6 = Number(ethers.formatUnits(await erc.balanceOf(TREASURY), 6)); }catch(_){}
+    try{ native = Number(ethers.formatEther(await readProvider.getBalance(TREASURY))); }catch(_){}
+    tUsdcNum = bal6 > 0 ? bal6 : native;   // whichever the agent actually holds
+    $('tUsdc').textContent = tUsdcNum.toLocaleString('en-US',{maximumFractionDigits:2}) + ' USDC';
+    if(eurUsd === null) await pythRefresh();
+    recomputeHealth();
+    setStatus('tStatus','');
+  }catch(e){ setStatus('tStatus','Read failed: '+(e.shortMessage||e.message||'').slice(0,80),'err'); }
+}
+
+function recomputeHealth(){
+  if(tUsdcNum === null || eurUsd === null) return;
+  const eurVal = tUsdcNum / eurUsd;                       // USDC ≈ USD → EUR
+  const target = parseFloat($('tgtEur').value) || 0;
+  const band = (parseFloat($('tgtBand').value) || 0) / 100;
+  $('tRate').textContent = eurUsd.toFixed(5);
+  $('tEurVal').textContent = '€' + eurVal.toLocaleString('en-US',{maximumFractionDigits:2});
+  $('tTarget').textContent = target ? '€'+target.toLocaleString('en-US',{maximumFractionDigits:2})+' ±'+($('tgtBand').value||'0')+'%' : '—';
+  if(!target){ $('tDrift').textContent='—'; $('tVerdict').textContent='set a target'; return; }
+  const drift = (eurVal - target) / target, pct = drift * 100;
+  $('tDrift').innerHTML = `<span style="color:${Math.abs(drift)>band?'var(--amber)':'var(--green)'}">${pct>=0?'+':''}${pct.toFixed(2)}%</span>`;
+  $('tVerdict').innerHTML = Math.abs(drift) > band
+    ? `<span style="color:var(--amber)">REBALANCE DUE — ${pct>0?'over':'under'} band</span>`
+    : `<span style="color:var(--green)">IN BAND — agent rests</span>`;
+}
+
+async function treasuryRebalance(){
+  if(!signer){ await connect(); if(!signer) return; }
+  try{
+    setStatus('tStatus','Confirm — poking the treasury agent to rebalance…');
+    const c = new ethers.Contract(TREASURY, TREASURY_ABI, signer);
+    const tx = await c.rebalance();
+    const rc = await tx.wait();
+    setStatus('tStatus',`✓ Agent rebalanced · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    toast('✓ Treasury rebalanced');
+    treasuryScan();
+  }catch(e){ setStatus('tStatus','Rebalance failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+}
+
+['tgtEur','tgtBand'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', recomputeHealth); });
+window.pythRefresh=pythRefresh; window.pythAuto=pythAuto; window.pythToggleLive=pythToggleLive;
+window.treasuryScan=treasuryScan; window.treasuryRebalance=treasuryRebalance;
 </script>
 </body>
 </html>
