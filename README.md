@@ -91,6 +91,128 @@ echo -n "sha384-$(openssl dgst -sha384 -binary vendor/ethers-<v>.umd.min.js | op
 The test suite serves the vendored bytes in place of the CDN, so a stale
 `integrity` attribute fails `tests/smoke.spec.js` rather than production.
 
+## Contracts
+
+`contracts/ArcPayV2.sol` and `contracts/ArcSub.sol` are the payments and
+subscription contracts, deployed at the `pay` and `subs` addresses in the
+network profile. `contracts/TreasuryAgent.sol` is the treasury. All three
+deployed contracts now have their sources here.
+
+### Review notes on ArcPayV2
+
+Read as part of wiring the frontend to it. Not an audit — an audit is still
+required before any mainnet profile is filled in.
+
+**Sound**
+
+- `claim()` and `recall()` both set `status` *before* the external call, so a
+  re-entering recipient hits the `status == 0` guard. No drain path.
+- A recipient contract that rejects the transfer cannot strand a recallable
+  payment: `claim()` reverts, but the sender can still `recall()` after the
+  window.
+- No owner, no pause, no upgrade path — nothing to trust.
+- The recall window is bounded to 60s–30 days.
+
+**Worth changing**
+
+- `splitPay()` reverts the whole batch if *any* recipient rejects the transfer
+  (`require(ok)` inside the loop). One recipient contract without a payable
+  fallback — deliberate or accidental — blocks the entire split. A pull-payment
+  pattern, or crediting failed shares for later withdrawal, removes the
+  griefing vector.
+- `splitPay()` ignores a failed dust refund (`ok2;`). The remainder is then
+  stranded in the contract permanently, and the contract balance no longer
+  equals the sum of pending recallables.
+- `sentBy()` / `receivedBy()` return unbounded arrays. Fine today; for a very
+  active address these view calls will eventually outgrow a node's response
+  limits, and a paginated variant would age better.
+
+### Review notes on ArcSub
+
+**Sound**
+
+- Allowance-pull, never custody: the contract holds no funds at any point, so
+  there is nothing in it to drain.
+- `charge()` advances `nextCharge` *before* calling `transferFrom`, so a
+  re-entering token cannot double-charge — the `block.timestamp >= nextCharge`
+  guard is already false. The token address is `immutable`, so it cannot be
+  swapped for a malicious one.
+- Missed periods do not pile up into a debt: if several intervals elapsed,
+  the next charge is scheduled one interval from now, not from the backlog.
+- Only `msg.sender` can subscribe themselves, so an open USDC approval to this
+  contract can only ever be pulled by subscriptions the approver created.
+  Unlimited approval is bounded in practice by that.
+- The amount is fixed at creation with no setter, so a merchant cannot raise
+  the price on an existing subscriber. Either party can cancel.
+
+**Worth changing**
+
+- `chargeMany()` deliberately swallows every failure
+  (`try this.charge(ids[i]) {} catch {}`). That is the right behaviour — one
+  subscriber with a revoked approval must not block the batch — but it means a
+  *mined transaction proves nothing about whether anyone was charged*, and
+  nothing on-chain reports which ones were skipped. An event per skipped id, or
+  a returned count, would let a caller tell success from silence.
+- `transferFrom` is called through a plain `IERC20` and its `bool` is checked.
+  Circle's USDC returns one, so this is correct here; a `SafeERC20`-style
+  wrapper would survive a token that returns nothing.
+- `listBySubscriber()` / `listByMerchant()` return unbounded arrays, same
+  ageing problem as ArcPayV2's indexes.
+- `label` is arbitrary caller-controlled text, and the contract cannot
+  sanitise it. Any frontend must escape it — this is exactly the stored-XSS
+  path that was fixed in the agent terminal.
+
+### Review notes on TreasuryAgent
+
+This is the only contract of the three that actually holds funds, so it carries
+the most risk.
+
+**Sound**
+
+- The confidence guard is real risk management, not decoration: a Pyth
+  confidence interval wider than `maxConfBps` defers the rebalance instead of
+  trading through a stressed market. `getPriceNoOlderThan` bounds staleness,
+  and the exponent is range-checked before being used as a divisor.
+- The keeper is paid from the treasury in the same transaction, so there is no
+  IOU and no settlement risk.
+- Only `usdc` and `eurc` can be deposited; all three token addresses and the
+  feed id are `immutable`.
+
+**Worth changing**
+
+- **`deposit()` is open to anyone; `withdraw()` is `onlyOwner`.** There is no
+  path that returns a third party's deposit. Anyone but the owner who funds
+  this treasury has made an irreversible transfer. This is the most serious
+  finding, and the UI now says so in plain words next to the Fund buttons and
+  asks for confirmation before a non-owner deposits.
+- **The keeper has no `minOut` / `maxIn` bound.** `rebalance()` decides the
+  trade size from drift at the price of the update the keeper just submitted;
+  the keeper cannot cap what gets pulled from their wallet, and a price move
+  between simulation and execution changes the amounts. A `maxIn`/`minOut`
+  parameter would close this. The frontend mitigates it by approving a bounded
+  amount rather than `MaxUint256`, but that is a workaround, not a fix.
+- **The excess-fee refund happens before the token transfers.** `rebalance()`
+  calls `msg.sender` to refund, then reads the price and executes. A keeper
+  contract can re-enter there. No profitable path is obvious — the inner call
+  rebalances and the outer then finds drift inside the band — but refunding
+  last, or a `nonReentrant` guard, removes the question entirely.
+- `_sellUsdc` / `_sellEurc` clamp the payout to the treasury balance without
+  reducing what the keeper supplies, so in the clamped case the keeper is
+  silently underpaid. Reachable only at extreme parameters, but it should
+  revert rather than shortchange.
+- The owner can withdraw everything at any time, and can move `targetUsdcBps`,
+  `maxPriceAge` and the bonus with no timelock. Worth stating wherever the
+  agent is described as autonomous.
+- `receive()` accepts native currency but nothing can send it back out — any
+  plain transfer to this contract is stuck permanently.
+
+**Used by the frontend**
+
+`sentBy()` and `receivedBy()` are the authoritative list of a user's recallable
+payments, so the Recallable tab reads them directly rather than scanning logs.
+Notes live only in `RecallableCreated`, so they are fetched best-effort and a
+missing log costs a note rather than the whole row.
+
 ## Tests
 
 `tests/` drives the real page in headless Chromium against a stubbed Arc RPC

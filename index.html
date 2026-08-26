@@ -535,6 +535,7 @@ body.engaged .hero{display:none;}
 
     <div class="card">
       <h2>Fund &amp; rebalance</h2>
+      <div id="tOwnerWarn" class="hint" style="display:none;border:1px solid var(--red);background:var(--red-bg);color:var(--red);padding:var(--s3) var(--s4);border-radius:var(--r-md);margin-bottom:var(--s3);"></div>
       <div class="hint" style="margin-bottom:14px;">A ratio needs both sides, so seed the treasury with USDC and EURC. Then anyone can be the <b>keeper</b>: supply the short side, receive the other plus a small bonus — that incentive is what makes the agent run without a babysitter.</div>
       <div class="row" style="align-items:flex-end;margin-top:0;">
         <div style="flex:1;min-width:150px;">
@@ -665,6 +666,10 @@ const ABI = [
   'function claim(uint256 id)',
   'function recall(uint256 id)',
   'function rpays(uint256) view returns (address from, address to, uint256 amount, uint256 recallAfter, uint8 status)',
+  // The contract maintains its own per-address index; these replace a log scan.
+  'function sentBy(address) view returns (uint256[])',
+  'function receivedBy(address) view returns (uint256[])',
+  'function total() view returns (uint256)',
   'event PaymentSent(address indexed from, address indexed to, uint256 amount, string note)',
   'event RecallableCreated(uint256 indexed id, address indexed from, address indexed to, uint256 amount, uint256 recallAfter, string note)',
   'event Claimed(uint256 indexed id, address indexed to, uint256 amount)',
@@ -1251,27 +1256,41 @@ async function loadRecalls(){
   $('rcList').innerHTML = '<p class="empty"><span class="spin"></span>Reading recallable payments from the chain…</p>' + skeletons(2);
   try{
     const me = userAddress.toLowerCase();
-    const sig = iface.getEvent('RecallableCreated').topicHash;
-    const mine = addrTopic(userAddress);
-    const logs = await getLogsFor([[sig, null, mine, null], [sig, null, null, mine]]);
-    const created = parseAll(logs)
-      .filter(x => x.ev.name === 'RecallableCreated' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me));
-    if(!created.length){ $('rcList').innerHTML = '<p class="empty">No recallable payments yet — send one above.</p>'; return; }
     const c = new ethers.Contract(ARCPAY, ABI, readProvider);
-    rcItems = await inBatches(created, 10, async ({ev})=>{
-      const id = Number(ev.args.id);
-      const onchain = await c.rpays(id);
+
+    // ArcPayV2 keeps _sent/_received indexes and exposes them, so ask the
+    // contract which payments are ours instead of scanning logs and hoping
+    // they fall inside the scanned block range.
+    const [sentIds, recvIds] = await Promise.all([
+      c.sentBy(userAddress), c.receivedBy(userAddress)
+    ]);
+    const ids = [...new Set([...sentIds, ...recvIds].map(Number))].sort((a, b) => b - a);
+    if(!ids.length){ $('rcList').innerHTML = '<p class="empty"><b>Nothing here yet</b>Send a recallable payment above and it will appear.</p>'; return; }
+
+    // The note is only in the event, never in storage — fetch it best-effort.
+    // A failed or truncated log scan now costs a note, not the payment itself.
+    const notes = new Map();
+    try{
+      const sig = iface.getEvent('RecallableCreated').topicHash;
+      const mine = addrTopic(userAddress);
+      for(const { ev } of parseAll(await getLogsFor([[sig, null, mine, null], [sig, null, null, mine]]))){
+        if(ev.name === 'RecallableCreated') notes.set(Number(ev.args.id), ev.args.note);
+      }
+    }catch(_){}
+
+    // Amounts, deadlines and status come from storage, which cannot go stale.
+    rcItems = await inBatches(ids, 10, async id => {
+      const p = await c.rpays(id);
       return {
         id,
-        from: ev.args.from, to: ev.args.to,
-        amount: formatNative(ev.args.amount),
-        deadline: Number(ev.args.recallAfter),
-        note: ev.args.note,
-        status: Number(onchain.status), // 0 open 1 claimed 2 recalled
-        out: ev.args.from.toLowerCase() === me
+        from: p.from, to: p.to,
+        amount: formatNative(p.amount),
+        deadline: Number(p.recallAfter),
+        note: notes.get(id) || '',
+        status: Number(p.status),        // 0 open · 1 claimed · 2 recalled
+        out: p.from.toLowerCase() === me
       };
     });
-    rcItems.sort((a,b)=>b.id-a.id);
     renderRecalls();
   }catch(e){
     $('rcList').innerHTML = `<p class="empty">Could not read: ${escHtml((e.shortMessage||e.message||'').slice(0,80))}</p>`;
@@ -1560,18 +1579,37 @@ async function cancelSub(id){
   }catch(e){ toast('Cancel failed: '+(e.shortMessage||e.message||'').slice(0,60)); }
 }
 
+/* Read the schedules back and count how many actually advanced. This is the
+   only honest way to report a chargeMany: the contract catches each failing
+   charge and moves on, so the transaction succeeds either way. */
+async function settledCount(ids, before){
+  const after = await fetchSubs(ids);
+  return after.filter(s => Number(s.nextChargeAt) > (before.get(s.id) ?? 0)).length;
+}
+
 async function collectDue(){
   if(!await requireSigner('merchStatus')) return;
   await loadSubs();
-  const due = merchSubsCache.filter(subDue).map(s=>s.id);
+  const dueSubs = merchSubsCache.filter(subDue);
+  const due = dueSubs.map(s => s.id);
   if (!due.length){ setStatus('merchStatus','Nothing due right now.'); return; }
+  const before = new Map(dueSubs.map(s => [s.id, Number(s.nextChargeAt)]));
   try{
-    setStatus('merchStatus',`Collecting ${due.length} due payment(s)…`);
+    setStatus('merchStatus',`<span class="spin"></span>Collecting ${due.length} due payment(s)…`);
     const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
-    const tx = await c.chargeMany(due);
-    const rc = await tx.wait();
-    setStatus('merchStatus',`✓ Collected ${due.length} payment(s) · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
-    toast('✓ All due payments collected');
+    const rc = await (await c.chargeMany(due)).wait();
+    const paid = await settledCount(due, before);
+    const missed = due.length - paid;
+    const link = `<a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`;
+    if(paid === due.length){
+      setStatus('merchStatus', `✓ Collected all ${paid} payment(s) · ${link}`, 'ok');
+      toast(`✓ Collected ${paid} payment(s)`);
+    } else {
+      setStatus('merchStatus',
+        `Collected ${paid} of ${due.length} · ${missed} could not be charged — the subscriber revoked their USDC approval or is out of balance · ${link}`,
+        paid ? '' : 'err');
+      toast(`Collected ${paid} of ${due.length}`);
+    }
     loadSubs();
   }catch(e){ setStatus('merchStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
 }
@@ -1732,30 +1770,17 @@ async function kpTick(){
         // v.label is a stranger's string — kpLog writes it as text, never markup.
         kpLog(`🔁 Subscription #${id} ("${v.label}") is due — collecting ${ethers.formatUnits(v.amount,6)} USDC for ${short(v.merchant)}…`);
       }
+      const before = new Map(slice.map(([id, v]) => [id, v.nextChargeAt]));
       try{
         const tx = ids.length === 1 ? await c.charge(ids[0]) : await c.chargeMany(ids);
         await tx.wait();
-        kpLog(`✓ ${ids.length} subscription(s) charged autonomously — merchants paid, next cycles scheduled.`,'ok');
       }catch(e){
         const msg = (e.shortMessage || e.message || '');
-        const broke = msg.toLowerCase().includes('insufficient');
-        kpLog(`batch [${ids.join(', ')}] failed: ` + msg.slice(0,80) + (broke ? ' — fund my gas!' : ''), 'err');
-        // One uncollectable subscriber (no allowance, empty wallet) reverts the
-        // whole chargeMany. Fall back to charging one at a time so the rest of
-        // the batch still gets paid.
-        if(!broke && ids.length > 1){
-          kpLog('↩ retrying the batch one subscription at a time…','warn');
-          for(const id of ids){
-            try{
-              await (await c.charge(id)).wait();
-              kpLog(`✓ #${id} charged.`,'ok');
-            }catch(e2){
-              kpLog(`#${id} skipped: ` + (e2.shortMessage||e2.message||'').slice(0,70),'err');
-            }
-          }
-        }
+        kpLog(`batch [${ids.join(', ')}] reverted: ` + msg.slice(0,80) +
+              (msg.toLowerCase().includes('insufficient') ? ' — fund my gas!' : ''), 'err');
       }
-      // Re-read what we just touched so a failed charge is not retried blindly.
+      // Re-read what we touched. chargeMany catches each failing charge, so the
+      // schedules are the only truth about who actually paid.
       await inBatches(ids, 10, async id => {
         try{
           const sd = await c.getSub(id);
@@ -1763,6 +1788,11 @@ async function kpTick(){
             amount: sd.amount, merchant: sd.merchant, label: sd.label });
         }catch{ kpSubs.delete(id); }
       });
+      const paid = ids.filter(id => (kpSubs.get(id)?.nextChargeAt ?? 0) > before.get(id));
+      if(paid.length) kpLog(`✓ ${paid.length} subscription(s) charged autonomously — merchants paid, next cycles scheduled.`,'ok');
+      for(const id of ids){
+        if(!paid.includes(id)) kpLog(`#${id} not charged — the subscriber revoked their USDC approval or is out of balance.`,'warn');
+      }
     }
   }catch(e){ kpLog('tick error: ' + (e.shortMessage||e.message||'').slice(0,80),'err'); }
   finally{ kpBusy = false; kpBal(); }
@@ -1837,6 +1867,7 @@ const HERMES = 'https://hermes.pyth.network/v2/updates/price/latest';
 const TREASURY_ABI = [
   'function rebalance(bytes[] updateData) payable',
   'function deposit(address token, uint256 amount)',
+  'function owner() view returns (address)',
   'function getStatus() view returns (uint256 usdcBal, uint256 eurcBal, uint16 targetUsdcBps, uint16 driftBps, uint16 maxConfBps, uint16 keeperBonusBps, bool paused)',
   // Pyth custom errors — here only so ethers can name the revert instead of "unknown custom error".
   'error StalePrice()','error InsufficientFee()','error InvalidUpdateData()','error InvalidUpdateDataSource()',
@@ -1849,7 +1880,22 @@ const ERC20_T_ABI = [
   'function allowance(address,address) view returns (uint256)',
   'function approve(address,uint256) returns (bool)'
 ];
-let eurUsd = null, pythTimer = null, tState = null;
+let eurUsd = null, pythTimer = null, tState = null, tOwner = null;
+
+/* The treasury takes deposits from anyone but only its owner can withdraw, so
+   funding it is a one-way transfer unless you are that owner. Say so where the
+   Fund buttons are, not in a footnote. */
+function renderOwnerWarning(){
+  const box = $('tOwnerWarn');
+  if(!tOwner){ box.style.display = 'none'; return; }
+  const mine = userAddress && userAddress.toLowerCase() === tOwner.toLowerCase();
+  if(mine){ box.style.display = 'none'; return; }
+  box.style.display = '';
+  box.innerHTML = `⚠ <b>Deposits here are one-way.</b> Anyone may fund this treasury, but only its owner
+    (<span style="font-family:var(--mono)">${short(tOwner)}</span>) can withdraw — there is no function that
+    returns a depositor's funds. Fund it only if that address is yours. Acting as a <b>keeper</b> through
+    "Run rebalance" is different: that is a swap, and you receive the other side plus a bonus in the same transaction.`;
+}
 
 async function pythRefresh(){
   if(!booted) return null;
@@ -1899,7 +1945,9 @@ async function treasuryScan(){
   try{
     setStatus('tStatus','Reading treasury status on-chain…');
     const c = new ethers.Contract(TREASURY, TREASURY_ABI, readProvider);
-    const s = await c.getStatus();
+    const [s, ownerAddr] = await Promise.all([c.getStatus(), c.owner().catch(() => null)]);
+    tOwner = ownerAddr;
+    renderOwnerWarning();
     tState = {
       usdc: Number(ethers.formatUnits(s.usdcBal, 6)),
       eurc: Number(ethers.formatUnits(s.eurcBal, 6)),
@@ -1957,6 +2005,10 @@ async function treasuryDeposit(which){
   if(!amt){ setStatus('tStatus','Enter a deposit amount above zero.','err'); return; }
   const token = which === 'eurc' ? EURC : USDC_ERC20;
   const sym = which === 'eurc' ? 'EURC' : 'USDC';
+  if(tOwner && (!userAddress || userAddress.toLowerCase() !== tOwner.toLowerCase())){
+    if(!confirm(`Only the treasury owner (${short(tOwner)}) can withdraw from this contract. ` +
+                `Depositing ${amt} ${sym} hands it over with no way to take it back.\n\nDeposit anyway?`)) return;
+  }
   try{
     const wei = toUnits6(amt);
     const erc = new ethers.Contract(token, ERC20_T_ABI, signer);
