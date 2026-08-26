@@ -39,7 +39,7 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;gap:1
 .hright{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .pill{font-family:var(--mono);font-size:12px;padding:6px 12px;border:0.5px solid var(--border2);border-radius:var(--r-pill);color:var(--muted);}
 .pill.gas{color:var(--green);border-color:var(--green-border);}
-.connect-btn{font-family:var(--font);font-weight:700;font-size:13px;padding:9px 16px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;transition:all .2s;}
+.connect-btn{font-family:var(--font);font-weight:700;font-size:13px;padding:9px 16px;border-radius:var(--r-pill);border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;transition:all .2s;}
 .connect-btn:hover{border-color:var(--accent);box-shadow:0 0 18px var(--accent-glow);}
 .connect-btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));border:none;}
 .connect-btn:disabled{opacity:0.5;cursor:wait;}
@@ -52,10 +52,10 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;gap:1
 .section{display:none;padding-bottom:50px;}
 .section.active{display:block;animation:fadein .25s ease;}
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:22px;margin-bottom:14px;}
+.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--r-lg);padding:22px;margin-bottom:14px;}
 .card h2{font-size:16px;font-weight:700;margin-bottom:14px;}
 label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin:var(--s3) 0 var(--s1);}
-input,textarea{width:100%;font-family:var(--mono);font-size:14px;padding:12px 14px;border-radius:10px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);outline:none;transition:border .2s;}
+input,textarea{width:100%;font-family:var(--mono);font-size:14px;padding:12px 14px;border-radius:var(--r-sm);border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);outline:none;transition:border .2s;}
 input:focus,textarea:focus{border-color:var(--accent);}
 textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
@@ -65,7 +65,7 @@ textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .status.err{color:var(--red);}
 .status a{color:var(--accent);}
 /* receipt — Pay on Arc'ın imzası */
-.receipt{background:var(--bg3);border:0.5px dashed var(--border2);border-radius:4px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;position:relative;margin-top:14px;}
+.receipt{background:var(--bg3);border:0.5px dashed var(--border2);border-radius:var(--r-sm);padding:18px 20px;font-family:var(--mono);font-size:12.5px;position:relative;margin-top:14px;}
 .receipt::before,.receipt::after{content:'';position:absolute;left:0;right:0;height:8px;background-image:radial-gradient(circle at 8px 0px, var(--bg) 5px, transparent 5px);background-size:16px 8px;}
 .receipt::before{top:-1px;}
 .receipt::after{bottom:-1px;transform:rotate(180deg);}
@@ -77,19 +77,19 @@ textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .gasbig{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
 .gasbig b{font-size:clamp(34px,7vw,54px);font-family:var(--mono);font-weight:500;color:var(--green);}
 .gasbig span{font-family:var(--mono);font-size:13px;color:var(--muted);}
-.preset{font-family:var(--mono);font-size:11.5px;padding:7px 12px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;}
+.preset{font-family:var(--mono);font-size:11.5px;padding:7px 12px;border-radius:var(--r-pill);border:0.5px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;}
 .preset.active{border-color:var(--green-border);color:var(--green);background:var(--green-bg);}
 .cost{font-size:13.5px;color:var(--muted);margin-top:var(--s3);line-height:1.9;}
 .cost b{color:var(--green);}
 /* cross-chain lane görseli */
 .lane{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted);margin:6px 0 2px;flex-wrap:wrap;}
-.lane .chip{padding:6px 12px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);}
+.lane .chip{padding:6px 12px;border-radius:var(--r-pill);border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);}
 .lane .chip.arc{border-color:var(--accent);color:var(--accent);}
 .lane .arrow{color:var(--accent2);font-size:16px;}
 footer{margin-top:auto;border-top:0.5px solid var(--border);padding:var(--s5) 0;font-size:13px;color:var(--muted);line-height:1.9;}
 footer a{color:var(--muted);text-decoration:none;}
 footer a:hover{color:var(--accent);}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg3);border:0.5px solid var(--border2);border-radius:12px;padding:12px 20px;font-family:var(--mono);font-size:12.5px;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg3);border:0.5px solid var(--border2);border-radius:var(--r-md);padding:12px 20px;font-family:var(--mono);font-size:12.5px;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;}
 .toast.show{opacity:1;}
 
 /* ── focus: visible for keyboards, invisible for mouse ── */
@@ -191,9 +191,23 @@ body.engaged .hero{display:none;}
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
+<script>
+/* Alternate visual directions, for choosing between them on the real app.
+   ?theme=receipt | editorial | terminal — anything else, or nothing, leaves
+   the default design untouched. Injected here so the sheet is applied before
+   first paint rather than flashing the default first. */
+(function(){
+  var THEMES = ['receipt','editorial','terminal'];
+  var t = new URLSearchParams(location.search).get('theme');
+  if(THEMES.indexOf(t) === -1) return;
+  document.head.insertAdjacentHTML('beforeend',
+    '<link rel="stylesheet" href="themes/' + t + '.css">');
+})();
+</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
+<div id="themeBar" style="display:none;"></div>
 
 <header>
   <div class="wrap">
@@ -735,6 +749,28 @@ function setStatus(id,msg,cls){ const s=$(id); s.innerHTML=msg||''; s.className=
 /* Tab order is the product argument: subscriptions first, the agent that runs
    them second, everything else after. */
 const TABS = ['subs','agent','pay','split','recall','bridge','treasury','history'];
+
+/* The switcher exists only for this decision; it renders when ?theme= or
+   ?themes=1 is present and is invisible to everyone else. */
+function mountThemeBar(){
+  const q = new URLSearchParams(location.search);
+  const cur = q.get('theme') || '';
+  if(!q.has('themes') && !cur) return;
+  const opts = [['','Current (dark)'],['receipt','A · Receipt'],['editorial','C · Editorial'],['terminal','B · Terminal']];
+  const bar = $('themeBar');
+  bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:500;' +
+    'display:flex;gap:6px;padding:6px;border-radius:99px;border:1px solid rgba(128,128,128,0.35);' +
+    'background:rgba(20,20,26,0.92);backdrop-filter:blur(14px);font-family:system-ui,sans-serif;font-size:12.5px;';
+  bar.innerHTML = opts.map(([v,label]) => {
+    const on = v === cur;
+    const u = new URL(location.href);
+    v ? u.searchParams.set('theme', v) : u.searchParams.delete('theme');
+    u.searchParams.set('themes','1');
+    return `<a href="${u.pathname + u.search + u.hash}" style="padding:7px 13px;border-radius:99px;text-decoration:none;
+      background:${on ? '#fff' : 'transparent'};color:${on ? '#111' : '#cfcfda'};font-weight:${on ? 700 : 500};">${label}</a>`;
+  }).join('');
+  bar.style.display = 'flex';
+}
 
 function showOverview(){
   document.body.classList.remove('engaged');
@@ -1353,6 +1389,7 @@ function boot(){
   // for a testnet demo and unacceptable for real funds — disable it outright.
   if(!IS_TESTNET) kpDisableForMainnet();
 
+  mountThemeBar();
   refreshGas();
   setInterval(refreshGas, 15000);
   checkIncoming();

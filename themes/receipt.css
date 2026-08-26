@@ -1,0 +1,83 @@
+/* ============================================================
+   THEME A — RECEIPT / PAPER
+   The perforated receipt is the most distinctive thing this app
+   already owns. This makes the whole product that object: printed
+   paper, monospace as the primary voice, one ink, one stamp red.
+   ============================================================ */
+:root{
+  --bg:#eeeae0;           /* the desk */
+  --bg2:#fbf9f4;          /* paper */
+  --bg3:#f4f0e6;          /* recessed paper */
+  --border:#d9d2c2;
+  --border2:#b9b09c;
+  --text:#1a1813;
+  --muted:#6b6355;
+  --dim:#a2998a;
+
+  --accent:#1b3a8f;       /* ink */
+  --accent2:#1b3a8f;
+  --accent-glow:rgba(27,58,143,0.14);
+
+  --green:#1c6b46;--green-bg:rgba(28,107,70,0.09);--green-border:rgba(28,107,70,0.32);
+  --amber:#8a5a11;--amber-bg:rgba(138,90,17,0.10);
+  --red:#a52a2a;--red-bg:rgba(165,42,42,0.09);
+
+  /* paper has corners */
+  --r-sm:2px;--r-md:3px;--r-lg:3px;--r-pill:2px;
+  --ring:0 0 0 2px var(--text);
+  --shadow-lift:0 2px 0 rgba(0,0,0,0.07), 0 10px 26px -18px rgba(0,0,0,0.4);
+}
+
+/* paper grain instead of the dark-mode noise wash */
+body::before{opacity:0.35;mix-blend-mode:multiply;}
+
+/* monospace is the voice of a printed document */
+html{font-family:var(--mono);}
+.lede,.section-head p,.hint,.empty,.step span,.cost,.status,footer,.econ{font-family:var(--mono);}
+.hero h1,.section-head h2,.card h2,.logo,.tab-btn,.connect-btn,.sub-row .sr-title{font-family:var(--font);}
+.hero h1{letter-spacing:-1.2px;}
+.hero h1 em{background:none;color:var(--accent);-webkit-text-fill-color:var(--accent);}
+.logo em{background:none;color:var(--accent);-webkit-text-fill-color:var(--accent);}
+.eyebrow{color:var(--muted);}
+.eyebrow::before{background:var(--border2);}
+
+header{background:rgba(251,249,244,0.94);border-bottom:1px solid var(--border2);}
+.tabs{background:var(--bg2);border:1px solid var(--border2);border-radius:3px;}
+.tab-btn{color:var(--muted);border-radius:2px;letter-spacing:0.02em;}
+.tab-btn.active{background:var(--text);color:var(--bg2);box-shadow:none;}
+
+/* every card is a slip of paper */
+.card,.stat,.step,.sub-row,.agent-id > div,.term-wrap{background:var(--bg2);border:1px solid var(--border);}
+.card{box-shadow:0 1px 0 rgba(0,0,0,0.05);}
+.card.feature{border:1px solid var(--text);box-shadow:var(--shadow-lift);}
+.agent-id{background:var(--border);border:1px solid var(--border);}
+
+input,textarea{background:#fff;border:1px solid var(--border2);border-radius:2px;color:var(--text);}
+input::placeholder,textarea::placeholder{color:var(--dim);}
+label{color:var(--muted);letter-spacing:0.12em;}
+
+/* buttons are stamped, not glowing */
+.connect-btn{background:var(--bg2);border:1px solid var(--text);color:var(--text);box-shadow:1px 1px 0 var(--text);}
+.connect-btn:hover{box-shadow:2px 2px 0 var(--text);transform:translate(-1px,-1px);border-color:var(--text);}
+.connect-btn.primary{background:var(--text);color:var(--bg2);border:1px solid var(--text);}
+.connect-btn.primary:hover{background:var(--accent);border-color:var(--accent);box-shadow:2px 2px 0 var(--accent);}
+.connect-btn:disabled{box-shadow:none;transform:none;}
+.pill{border:1px solid var(--border2);border-radius:2px;color:var(--muted);}
+.pill.gas{color:var(--green);border-color:var(--green-border);}
+
+/* the receipt itself, now literal */
+.receipt{background:#fff;border:1px solid var(--border2);border-style:dashed;border-radius:0;}
+.receipt::before,.receipt::after{background-image:radial-gradient(circle at 8px 0px, var(--bg) 5px, transparent 5px);}
+.receipt .r-amt{color:var(--text);}
+.empty{border:1px dashed var(--border2);background:transparent;}
+.badge{border-radius:2px;border:1px solid var(--border2);}
+.econ b{color:var(--text);}
+.econ b.good{color:var(--green);}
+
+.skeleton{background:linear-gradient(90deg,var(--bg3) 25%,#fff 50%,var(--bg3) 75%);background-size:240% 100%;border-radius:2px;}
+.term-wrap{border:1px solid var(--text);border-radius:2px;background:#fff;}
+.term-bar{background:var(--bg3);border-bottom:1px dashed var(--border2);}
+#kpTerm{color:var(--text);}
+.dot{background:var(--dim);}
+footer{border-top:1px solid var(--border2);}
+.sub-row.due{background:var(--amber-bg);border-color:var(--amber);}
