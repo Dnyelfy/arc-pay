@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { setup, waitBooted, ACCOUNT } = require('./harness');
+const { setup, waitBooted, goTab } = require('./harness');
 
 const RECIPIENT = '0x2222222222222222222222222222222222222222';
 const sends = page => page.evaluate(() =>
@@ -15,6 +15,7 @@ test.describe('wrong-network guard', () => {
     await page.click('#connBtn');
     await expect(page.locator('#connBtn')).toContainText('✕');
 
+    await goTab(page, 'pay');
     await page.fill('#payTo', RECIPIENT);
     await page.fill('#payAmt', '1.5');
     await page.click('button:has-text("Send payment")');
@@ -45,6 +46,7 @@ test.describe('wrong-network guard', () => {
       };
     });
 
+    await goTab(page, 'pay');
     await page.fill('#payTo', RECIPIENT);
     await page.fill('#payAmt', '1');
     await page.click('button:has-text("Send payment")');
@@ -79,6 +81,6 @@ test.describe('wrong-network guard', () => {
     await page.click('#connBtn');   // now bound to disconnect
     await expect(page.locator('#connBtn')).toHaveText('Connect wallet');
     await expect(page.locator('#balPill')).toBeHidden();
-    await expect(page.locator('#mySubsList')).toContainText('Connect & load');
+    await expect(page.locator('#mySubsList')).toContainText('Connect your wallet and refresh');
   });
 });

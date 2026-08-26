@@ -19,12 +19,17 @@
   --amber:#ffc107;--amber-bg:rgba(255,193,7,0.08);
   --red:#ff5252;--red-bg:rgba(255,82,82,0.08);
   --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
+  /* spacing + shape scale — everything below picks from these, nothing invents its own */
+  --s1:6px;--s2:10px;--s3:14px;--s4:20px;--s5:28px;--s6:40px;--s7:64px;
+  --r-sm:10px;--r-md:14px;--r-lg:20px;--r-pill:99px;
+  --ring:0 0 0 3px rgba(91,107,255,0.35);
+  --shadow-lift:0 18px 44px -22px rgba(0,0,0,0.85);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html{background:var(--bg);color:var(--text);font-family:var(--font);}
 body{min-height:100vh;display:flex;flex-direction:column;}
 body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.5;}
-.wrap{width:min(860px,92vw);margin:0 auto;position:relative;z-index:1;}
+.wrap{width:min(1040px,92vw);margin:0 auto;position:relative;z-index:1;}
 header{padding:20px 0;border-bottom:0.5px solid var(--border);position:sticky;top:0;background:rgba(10,10,15,0.88);backdrop-filter:blur(20px);z-index:100;}
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .logo{font-weight:800;font-size:20px;letter-spacing:-0.5px;}
@@ -36,12 +41,11 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;gap:1
 .connect-btn:hover{border-color:var(--accent);box-shadow:0 0 18px var(--accent-glow);}
 .connect-btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));border:none;}
 .connect-btn:disabled{opacity:0.5;cursor:wait;}
-.hero{padding:42px 0 10px;}
-.hero h1{font-size:clamp(28px,5vw,44px);font-weight:800;line-height:1.08;letter-spacing:-1px;}
-.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
-.hero p{color:var(--muted);font-size:14.5px;margin-top:12px;max-width:560px;line-height:1.6;}
-.tabs{display:flex;gap:4px;margin:28px 0 18px;border:0.5px solid var(--border);border-radius:14px;padding:4px;background:var(--bg2);width:fit-content;max-width:100%;overflow-x:auto;}
-.tab-btn{font-family:var(--font);font-weight:700;font-size:13px;padding:9px 16px;border-radius:10px;border:none;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin:var(--s5) 0 var(--s4);border:0.5px solid var(--border);
+  border-radius:var(--r-md);padding:5px;background:var(--bg2);position:sticky;top:69px;z-index:90;
+  backdrop-filter:blur(20px);}
+.tab-btn{flex:0 1 auto;}
+.tab-btn{font-family:var(--font);font-weight:700;font-size:12.5px;padding:9px 13px;border-radius:var(--r-sm);border:none;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;}
 .tab-btn.active{background:var(--bg3);color:var(--text);box-shadow:inset 0 0 0 0.5px var(--border2);}
 .section{display:none;padding-bottom:50px;}
 .section.active{display:block;animation:fadein .25s ease;}
@@ -53,7 +57,7 @@ input,textarea{width:100%;font-family:var(--mono);font-size:14px;padding:12px 14
 input:focus,textarea:focus{border-color:var(--accent);}
 textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
-.hint{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:8px;line-height:1.6;}
+.hint{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.7;}
 .status{font-family:var(--mono);font-size:12px;margin-top:12px;color:var(--muted);min-height:16px;word-break:break-all;}
 .status.ok{color:var(--green);}
 .status.err{color:var(--red);}
@@ -75,25 +79,123 @@ textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .preset.active{border-color:var(--green-border);color:var(--green);background:var(--green-bg);}
 .cost{font-family:var(--mono);font-size:13px;color:var(--text);margin-top:14px;line-height:1.9;}
 .cost b{color:var(--green);}
-.empty{font-family:var(--mono);font-size:12.5px;color:var(--dim);padding:18px 0;text-align:center;}
 /* cross-chain lane görseli */
 .lane{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted);margin:6px 0 2px;flex-wrap:wrap;}
 .lane .chip{padding:6px 12px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);}
 .lane .chip.arc{border-color:var(--accent);color:var(--accent);}
 .lane .arrow{color:var(--accent2);font-size:16px;}
-footer{margin-top:auto;border-top:0.5px solid var(--border);padding:20px 0;font-family:var(--mono);font-size:11.5px;color:var(--dim);}
+footer{margin-top:auto;border-top:0.5px solid var(--border);padding:var(--s5) 0;font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.9;}
 footer a{color:var(--muted);text-decoration:none;}
 footer a:hover{color:var(--accent);}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg3);border:0.5px solid var(--border2);border-radius:12px;padding:12px 20px;font-family:var(--mono);font-size:12.5px;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;}
 .toast.show{opacity:1;}
+
+/* ── focus: visible for keyboards, invisible for mouse ── */
+:focus{outline:none;}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--r-sm);}
+.tab-btn:focus-visible,.connect-btn:focus-visible,.preset:focus-visible{box-shadow:var(--ring);}
+input:focus-visible,textarea:focus-visible{border-color:var(--accent);box-shadow:var(--ring);}
+.skip{position:absolute;left:-9999px;top:0;background:var(--bg3);color:var(--text);padding:10px 16px;border-radius:var(--r-sm);z-index:400;}
+.skip:focus{left:12px;top:12px;}
+
+/* ── eyebrow / section rhythm ── */
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin-bottom:var(--s3);display:flex;align-items:center;gap:8px;}
+.eyebrow::before{content:'';width:22px;height:1px;background:linear-gradient(90deg,var(--accent),transparent);}
+.lede{color:var(--muted);font-size:15px;line-height:1.65;max-width:58ch;}
+.section-head{margin:var(--s6) 0 var(--s4);}
+.section-head h2{font-size:20px;font-weight:800;letter-spacing:-0.4px;}
+.section-head p{color:var(--muted);font-size:13.5px;margin-top:var(--s1);line-height:1.6;max-width:60ch;}
+.card-sub{color:var(--muted);font-size:13px;line-height:1.6;margin:-6px 0 var(--s3);}
+
+/* ── hero ── */
+.hero{padding:var(--s7) 0 var(--s3);}
+body.engaged .hero{display:none;}
+.logo{cursor:pointer;}
+.logo:hover em{opacity:0.8;}
+.hero h1{font-size:clamp(32px,6vw,54px);font-weight:800;line-height:1.04;letter-spacing:-1.6px;max-width:16ch;}
+.hero h1 em{font-style:normal;background:linear-gradient(100deg,var(--accent),var(--accent2) 70%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hero .lede{margin-top:var(--s4);}
+.hero-cta{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s5);}
+.btn-lg{font-size:14px;padding:13px 22px;}
+
+/* ── the economics strip: the actual argument for this chain ── */
+.econ{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--border);
+  border:0.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-top:var(--s6);}
+.econ div{background:var(--bg2);padding:var(--s4);}
+.econ b{display:block;font-family:var(--mono);font-size:clamp(20px,3vw,26px);font-weight:500;color:var(--text);letter-spacing:-0.5px;}
+.econ b.good{color:var(--green);}
+.econ b.bad{color:var(--red);text-decoration:line-through;text-decoration-thickness:1px;opacity:0.75;}
+.econ span{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:var(--s1);line-height:1.5;}
+.econ-note{font-family:var(--mono);font-size:11.5px;color:var(--muted);opacity:0.8;margin-top:var(--s3);line-height:1.7;}
+
+/* ── stat row ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:var(--s2);margin-bottom:var(--s3);}
+.stat{background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--r-md);padding:var(--s3) var(--s4);}
+.stat b{display:block;font-family:var(--mono);font-size:22px;font-weight:500;letter-spacing:-0.5px;}
+.stat span{display:block;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-top:var(--s1);}
+
+/* ── empty + loading states ── */
+.empty{font-family:var(--mono);font-size:12.5px;color:var(--muted);padding:var(--s5) var(--s4);text-align:center;line-height:1.7;
+  border:1px dashed var(--border2);border-radius:var(--r-md);background:rgba(255,255,255,0.012);}
+.empty b{display:block;color:var(--muted);font-weight:400;margin-bottom:var(--s1);}
+.skeleton{height:64px;border-radius:var(--r-md);margin-bottom:var(--s2);
+  background:linear-gradient(90deg,var(--bg3) 25%,rgba(255,255,255,0.045) 50%,var(--bg3) 75%);
+  background-size:240% 100%;animation:shimmer 1.3s linear infinite;}
+@keyframes shimmer{from{background-position:140% 0}to{background-position:-40% 0}}
+.spin{display:inline-block;width:11px;height:11px;border:1.5px solid var(--border2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite;vertical-align:-1px;margin-right:7px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── subscription rows ── */
+.sub-row{background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--r-md);padding:var(--s3) var(--s4);
+  margin-bottom:var(--s2);display:flex;align-items:center;gap:var(--s3);justify-content:space-between;flex-wrap:wrap;transition:border-color .2s;}
+.sub-row:hover{border-color:var(--border2);}
+.sub-row.due{border-color:var(--amber-bg);background:linear-gradient(90deg,var(--amber-bg),var(--bg3) 60%);}
+.sub-row .sr-main{min-width:0;flex:1;}
+.sub-row .sr-title{font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.sub-row .sr-meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.6;word-break:break-word;}
+.sub-row .sr-amt{font-family:var(--mono);font-size:15px;color:var(--text);white-space:nowrap;}
+.badge{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:var(--r-pill);border:0.5px solid var(--border2);color:var(--muted);}
+.badge.due{color:var(--amber);border-color:var(--amber);background:var(--amber-bg);}
+.badge.live{color:var(--green);border-color:var(--green-border);background:var(--green-bg);}
+.badge.off{color:var(--dim);}
+
+/* ── billing agent ── */
+.agent-id{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--border);
+  border:0.5px solid var(--border);border-radius:var(--r-md);overflow:hidden;margin-bottom:var(--s4);}
+.agent-id > div{background:var(--bg3);padding:var(--s3) var(--s4);}
+.agent-id .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);}
+.agent-id .v{font-family:var(--mono);font-size:13px;margin-top:5px;word-break:break-all;display:flex;align-items:center;gap:6px;}
+.term-wrap{border:0.5px solid var(--border2);border-radius:var(--r-md);overflow:hidden;background:#08080d;margin-top:var(--s3);}
+.term-bar{display:flex;align-items:center;gap:8px;padding:9px var(--s3);border-bottom:0.5px solid var(--border);
+  background:var(--bg2);font-family:var(--mono);font-size:11px;color:var(--muted);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none;}
+.dot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-bg);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{50%{box-shadow:0 0 0 6px transparent}}
+#kpTerm{padding:var(--s3) var(--s4);font-family:var(--mono);font-size:12px;line-height:1.85;
+  max-height:340px;min-height:150px;overflow-y:auto;white-space:pre-wrap;}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:var(--s2);margin-top:var(--s3);}
+.step{background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--r-md);padding:var(--s3) var(--s4);}
+.step b{display:block;font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:0.1em;margin-bottom:6px;}
+.step span{font-size:13px;color:var(--muted);line-height:1.6;}
+
+/* ── copyable address ── */
+.copy{font-family:var(--mono);font-size:12px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 5px;border-radius:6px;}
+.copy:hover{color:var(--accent);background:var(--bg3);}
+
+.card{transition:border-color .2s;}
+.card.feature{border-color:var(--border2);box-shadow:var(--shadow-lift);}
+.connect-btn:disabled{opacity:0.45;cursor:not-allowed;}
+
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header>
   <div class="wrap">
-    <div class="logo">Pay <em>on Arc</em></div>
+    <div class="logo" role="button" tabindex="0" onclick="showOverview()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showOverview();}" title="Back to the overview">Pay <em>on Arc</em></div>
     <div class="hright">
       <span class="pill" id="netPill">—</span>
       <span class="pill gas" id="gasPill">⛽ — gwei</span>
@@ -103,25 +205,41 @@ footer a:hover{color:var(--accent);}
   </div>
 </header>
 
-<div class="wrap">
-  <div class="hero">
-    <h1>Money moves like a message.<br/><em>USDC-native, on Arc.</em></h1>
-    <p>Send a payment, drop someone a pay-link, split a bill across 20 wallets, or bridge a message to Ethereum — every action lands on-chain for about a cent. Gas is USDC here; what you see is what you pay.</p>
-  </div>
+<div class="wrap" id="main">
+  <section class="hero">
+    <div class="eyebrow">Recurring payments, native to the chain</div>
+    <h1>Subscriptions that <em>collect themselves.</em></h1>
+    <p class="lede">A $5 monthly plan cannot survive on a chain where collecting it costs more than it earns. Here a charge costs the rounding error below, and gas is USDC — so a subscription can pull its own money, every period, with nobody clicking anything. Set one up, start the billing agent, and let it invoice your subscribers while you sleep.</p>
+    <div class="hero-cta">
+      <button class="connect-btn primary btn-lg" onclick="go('subs')">Start a subscription</button>
+      <button class="connect-btn btn-lg" onclick="go('agent')">🤖 Meet the billing agent</button>
+    </div>
 
-  <div class="tabs">
-    <button class="tab-btn active" onclick="go('pay',this)">💸 Pay & Link</button>
-    <button class="tab-btn" onclick="go('split',this)">🔀 Split</button>
-    <button class="tab-btn" onclick="go('recall',this)">⏳ Recallable</button>
-    <button class="tab-btn" onclick="go('bridge',this)">🌉 Cross-Chain</button>
-    <button class="tab-btn" onclick="go('agent',this)">🤖 Billing Agent</button>
-    <button class="tab-btn" onclick="go('history',this)">🧾 Receipts</button>
-    <button class="tab-btn" onclick="go('subs',this)">🔁 Subscriptions</button>
-    <button class="tab-btn" onclick="go('treasury',this);pythAuto()">💶 Treasury</button>
+    <div class="econ">
+      <div><b class="good" id="econCost">—</b><span>estimated cost of one on-chain charge, at the gas price in the header right now</span></div>
+      <div><b id="econYear">—</b><span>to bill a monthly plan for a whole year — twelve charges</span></div>
+      <div><b>USDC</b><span>is the gas token, so a merchant never holds a second asset just to get paid</span></div>
+    </div>
+    <p class="econ-note">Estimated from the live Arc gas price × ~80,000 gas for a charge. Where a single charge costs dollars, small recurring plans are not economically possible at all — that is the whole reason this app lives here.</p>
+  </section>
+
+  <div class="tabs" role="tablist" aria-label="Pay on Arc features">
+    <button class="tab-btn active" role="tab" aria-selected="true"  aria-controls="sec-subs"     id="tab-subs"     onclick="go('subs',this)">🔁 Subscriptions</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-agent"    id="tab-agent"    tabindex="-1" onclick="go('agent',this)">🤖 Billing Agent</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-pay"      id="tab-pay"      tabindex="-1" onclick="go('pay',this)">💸 Pay &amp; Link</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-split"    id="tab-split"    tabindex="-1" onclick="go('split',this)">🔀 Split</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-recall"   id="tab-recall"   tabindex="-1" onclick="go('recall',this)">⏳ Recallable</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-bridge"   id="tab-bridge"   tabindex="-1" onclick="go('bridge',this)">🌉 Cross-Chain</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-treasury" id="tab-treasury" tabindex="-1" onclick="go('treasury',this)">💶 Treasury</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-history"  id="tab-history"  tabindex="-1" onclick="go('history',this)">🧾 Receipts</button>
   </div>
 
   <!-- PAY -->
-  <div class="section active" id="sec-pay">
+  <div class="section" id="sec-pay" role="tabpanel" aria-labelledby="tab-pay">
+    <div class="section-head">
+      <h2>Send money with something to say</h2>
+      <p>A payment carries a note on-chain, so the receipt explains itself later. Or turn it into a pay-link: the other side opens it, sees exactly what is being asked for, and pays in one tap.</p>
+    </div>
     <div class="card" id="incomingCard" style="display:none;border-color:var(--green-border);">
       <h2>📥 Payment request</h2>
       <div class="receipt" id="incomingReceipt"></div>
@@ -146,8 +264,12 @@ footer a:hover{color:var(--accent);}
   </div>
 
   <!-- SPLIT -->
-  <div class="section" id="sec-split">
-    <div class="card">
+  <div class="section" id="sec-split" role="tabpanel" aria-labelledby="tab-split">
+    <div class="section-head">
+      <h2>One transaction, up to twenty wallets</h2>
+      <p>Equal shares, a single confirmation, and a separate on-chain receipt for every recipient. Rounding dust comes back to you rather than being stranded in the contract.</p>
+    </div>
+    <div class="card feature">
       <h2>Split a payment</h2>
       <label for="splitTo">Recipients — one address per line (max 20)</label>
       <textarea id="splitTo" placeholder="0xabc…&#10;0xdef…&#10;0x123…" spellcheck="false"></textarea>
@@ -163,10 +285,13 @@ footer a:hover{color:var(--accent);}
   </div>
 
   <!-- RECALLABLE -->
-  <div class="section" id="sec-recall">
-    <div class="card">
+  <div class="section" id="sec-recall" role="tabpanel" aria-labelledby="tab-recall">
+    <div class="section-head">
+      <h2>Payments you can take back</h2>
+      <p>Inspired by Miden's P2IDR notes. The recipient can claim at any moment; if they never do, the money returns to you once the window closes. The cure for sending to the wrong address.</p>
+    </div>
+    <div class="card feature">
       <h2>Send a recallable payment</h2>
-      <p class="hint" style="margin:0 0 4px;">Inspired by Miden's P2IDR notes: the recipient can claim any time, but if they don't, you can pull the funds back after the window closes. No more "wrong address" panic.</p>
       <label for="rcTo">Recipient address</label>
       <input id="rcTo" placeholder="0x…" spellcheck="false"/>
       <label for="rcAmt">Amount (USDC)</label>
@@ -191,8 +316,12 @@ footer a:hover{color:var(--accent);}
   </div>
 
   <!-- CROSS-CHAIN (Chainlink CCIP) -->
-  <div class="section" id="sec-bridge">
-    <div class="card">
+  <div class="section" id="sec-bridge" role="tabpanel" aria-labelledby="tab-bridge">
+    <div class="section-head">
+      <h2>One transaction, two chains</h2>
+      <p>A message leaves Arc through the Chainlink CCIP router, crosses a live lane, and runs code in a contract on the far side — where it is stored and emits an event you can read back below. The fee is paid in USDC, like everything else here.</p>
+    </div>
+    <div class="card feature">
       <h2>🌉 Send a message across chains</h2>
       <p class="hint" style="margin:0 0 8px;">Powered by Chainlink CCIP. Your message leaves Arc Testnet and is delivered to Ethereum Sepolia — one of the few live cross-chain lanes on Arc. The fee is paid in USDC, like everything else here.</p>
       <div class="lane">
@@ -230,15 +359,30 @@ footer a:hover{color:var(--accent);}
   </div>
 
   <!-- BILLING AGENT -->
-  <div class="section" id="sec-agent">
-    <div class="card">
-      <h2>🤖 Billing agent — subscriptions collect themselves</h2>
-      <div class="hint" style="margin-bottom:14px;">A tiny on-chain worker with its own wallet, living in this page. While it's online, it watches the subscription contract and charges every due subscription <b>by itself</b> — no MetaMask, no clicks, no human. Subscribers pay while everyone sleeps. Burner key stays in this browser · testnet only.</div>
-      <div class="receipt" style="margin-bottom:12px;">
-        Agent address: <b id="kpAddr" style="word-break:break-all;">—</b><br/>
-        <span style="color:var(--muted);font-size:12px;">Gas balance: <b id="kpGas">—</b> · pays only tx fees; subscription money flows subscriber → merchant directly</span>
+  <div class="section" id="sec-agent" role="tabpanel" aria-labelledby="tab-agent">
+    <div class="section-head">
+      <h2>A worker that bills for you</h2>
+      <p>A tiny on-chain agent with its own wallet, living in this page. While it is online it watches the subscription contract and charges every due subscription <b>by itself</b> — no MetaMask prompt, no click, no human. It pays only transaction fees; the subscription money always moves subscriber → merchant directly and never touches the agent.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><b>EVERY 15s</b><span>Reads the subscription table, picking up anything created since the last pass.</span></div>
+      <div class="step"><b>WHEN DUE</b><span>Batches the due ones into a single charge, and retries individually if one reverts.</span></div>
+      <div class="step"><b>ON EMPTY</b><span>Says so once and idles, instead of burning gas on a failing call every tick.</span></div>
+    </div>
+
+    <div class="card feature" style="margin-top:var(--s4);">
+      <div class="agent-id">
+        <div>
+          <div class="k">Agent address</div>
+          <div class="v"><span id="kpAddr">—</span><button class="copy" onclick="copyText($('kpAddr').textContent,this)" title="Copy">⧉</button></div>
+        </div>
+        <div>
+          <div class="k">Gas balance</div>
+          <div class="v" id="kpGas">—</div>
+        </div>
       </div>
-      <div class="row" style="align-items:flex-end;">
+      <div class="row" style="align-items:flex-end;margin-top:0;">
         <div style="flex:1;min-width:140px;">
           <label for="kpFundAmt">Fund gas (USDC)</label>
           <input id="kpFundAmt" placeholder="1.00" inputmode="decimal"/>
@@ -251,14 +395,24 @@ footer a:hover{color:var(--accent);}
         <button class="connect-btn" onclick="kpSweep()">💸 Sweep gas back</button>
         <button class="connect-btn" onclick="kpReset()">🗑 New key</button>
       </div>
-      <div class="status" id="kpState" style="margin-top:12px;">agent offline</div>
-      <div id="kpTerm" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.8;max-height:240px;overflow-y:auto;white-space:pre-wrap;margin-top:12px;"><span style="color:var(--muted)">[boot]</span> Agent terminal ready. Fund gas, press Start, and leave this tab open.</div>
+      <div class="term-wrap">
+        <div class="term-bar">
+          <span class="dot" id="kpDot"></span>
+          <span id="kpState">agent offline</span>
+        </div>
+        <div id="kpTerm">[boot] Agent terminal ready. Fund gas, press Start, and leave this tab open.</div>
+      </div>
       <div class="status" id="kpStatus"></div>
+      <div class="hint">The burner key lives in this browser's local storage and nowhere else — that is why this feature is testnet-only and switches itself off on any other network.</div>
     </div>
   </div>
 
   <!-- HISTORY -->
-  <div class="section" id="sec-history">
+  <div class="section" id="sec-history" role="tabpanel" aria-labelledby="tab-history">
+    <div class="section-head">
+      <h2>Every payment, straight from the chain</h2>
+      <p>Read out of the contract's own events and filtered to your address — nothing here comes from a server that could be wrong.</p>
+    </div>
     <div class="card">
       <h2>Your receipts</h2>
       <div class="row" style="margin-top:0;"><button class="connect-btn" onclick="loadHistory()">↻ Load from chain</button></div>
@@ -266,8 +420,19 @@ footer a:hover{color:var(--accent);}
     </div>
   </div>
   <!-- SUBSCRIPTIONS -->
-  <div class="section" id="sec-subs">
-    <div class="card">
+  <div class="section active" id="sec-subs" role="tabpanel" aria-labelledby="tab-subs">
+    <div class="section-head">
+      <h2>Recurring payments, settled on-chain</h2>
+      <p>No money leaves your wallet up front. You approve USDC once, and each period is pulled only when it comes due — by the merchant, by you, or by the billing agent. Cancel in one transaction, any time, from either side.</p>
+    </div>
+
+    <div class="stats" id="subStats" style="display:none;">
+      <div class="stat"><b id="statSubs">—</b><span>active subscribers</span></div>
+      <div class="stat"><b id="statMrr" style="color:var(--green)">—</b><span>est. monthly revenue</span></div>
+      <div class="stat"><b id="statNext">—</b><span>next charge due</span></div>
+    </div>
+
+    <div class="card feature">
       <h2>🔁 Start a subscription</h2>
       <label for="subTo">Merchant / recipient address — who gets paid</label>
       <input id="subTo" placeholder="0x…" spellcheck="false"/>
@@ -290,26 +455,35 @@ footer a:hover{color:var(--accent);}
     </div>
 
     <div class="card">
-      <h2>📤 My subscriptions <span style="font-weight:400;font-size:12px;color:var(--muted)">(I pay)</span></h2>
-      <div id="mySubsList"><p class="empty">Connect & load to see subscriptions you're paying.</p></div>
-      <div class="row"><button class="connect-btn" onclick="loadSubs()">↻ Load</button></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:var(--s3);">
+        <h2 style="margin:0;">📤 Paying out <span style="font-weight:400;font-size:12px;color:var(--muted)">— subscriptions you fund</span></h2>
+        <button class="connect-btn" onclick="loadSubs()">↻ Refresh</button>
+      </div>
+      <div id="mySubsList"><p class="empty"><b>Nothing yet</b>Connect your wallet and refresh to see what you are paying for.</p></div>
     </div>
 
     <div class="card">
-      <h2>📥 My subscribers <span style="font-weight:400;font-size:12px;color:var(--muted)">(they pay me)</span></h2>
-      <div id="myMerchList"><p class="empty">Connect & load to see who's subscribed to you.</p></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:var(--s3);">
+        <h2 style="margin:0;">📥 Getting paid <span style="font-weight:400;font-size:12px;color:var(--muted)">— people subscribed to you</span></h2>
+        <button class="connect-btn" onclick="loadSubs()">↻ Refresh</button>
+      </div>
+      <div id="myMerchList"><p class="empty"><b>No subscribers yet</b>Share your address with a plan label and they will show up here.</p></div>
       <div class="row">
-        <button class="connect-btn primary" onclick="collectDue()">💰 Collect all due payments</button>
+        <button class="connect-btn primary" onclick="collectDue()">💰 Collect everything due</button>
         <button class="connect-btn" id="autoCollectBtn" onclick="toggleAutoCollect()">🤖 Auto-collector: OFF</button>
       </div>
       <div class="status" id="merchStatus"></div>
-      <div class="hint">Anyone can trigger a due charge — leave the auto-collector on and this page becomes your billing robot, charging subscribers the moment payments come due.</div>
+      <div class="hint">A due charge can be triggered by anyone — that is what makes it automatable. Leave the auto-collector on and this tab bills for you; hand the job to the <a href="#agent" onclick="go('agent');return false;" style="color:var(--accent)">billing agent</a> and you can close the tab entirely.</div>
     </div>
   </div>
 
   <!-- TREASURY -->
-  <div class="section" id="sec-treasury">
-    <div class="card">
+  <div class="section" id="sec-treasury" role="tabpanel" aria-labelledby="tab-treasury">
+    <div class="section-head">
+      <h2>A treasury that rebalances itself</h2>
+      <p>It holds USDC and EURC and tries to keep a fixed split of value between them. Every EUR/USD tick moves that split, so the agent reads the Pyth feed and — once drift breaks the band — pays any keeper a bonus to settle it back on-chain.</p>
+    </div>
+    <div class="card feature">
       <h2>💶 Treasury agent — reads Pyth, holds the mix</h2>
       <div class="hint" style="margin-bottom:16px;">The treasury holds two stablecoins — <b>USDC</b> and <b>EURC</b> — and tries to keep a fixed value split between them. Every EUR/USD tick shifts that split, so the agent reads the <b>Pyth EUR/USD</b> feed and, when the mix drifts out of band, lets any keeper settle it back on-chain. Live oracle · Arc Testnet.</div>
       <div class="lane" style="margin-bottom:2px;">
@@ -535,6 +709,16 @@ async function inBatches(items, size, fn){
   return out;
 }
 
+async function copyText(t, btn){
+  const v = (t || '').trim();
+  if(!v || v === '—') return;
+  try{
+    await navigator.clipboard.writeText(v);
+    if(btn){ const old = btn.textContent; btn.textContent = '✓'; setTimeout(()=>{ btn.textContent = old; }, 1200); }
+    toast('✓ Copied');
+  }catch{ toast('Could not copy'); }
+}
+
 function requireReady(statusId){
   if(booted) return true;
   const m = 'Still loading — one moment.';
@@ -545,12 +729,51 @@ function requireReady(statusId){
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200); }
 function setStatus(id,msg,cls){ const s=$(id); s.innerHTML=msg||''; s.className='status'+(cls?' '+cls:''); }
 
-function go(name, btn){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  $('sec-'+name).classList.add('active');
-  if(btn) btn.classList.add('active');
+/* Tab order is the product argument: subscriptions first, the agent that runs
+   them second, everything else after. */
+const TABS = ['subs','agent','pay','split','recall','bridge','treasury','history'];
+
+function showOverview(){
+  document.body.classList.remove('engaged');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+function go(name, btn){
+  if(!TABS.includes(name)) name = TABS[0];
+  document.body.classList.add('engaged');
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected','false');
+    b.tabIndex = -1;
+  });
+  $('sec-' + name).classList.add('active');
+  const tab = btn || $('tab-' + name);
+  if(tab){
+    tab.classList.add('active');
+    tab.setAttribute('aria-selected','true');
+    tab.tabIndex = 0;
+  }
+  // Keep the tab in the URL so a demo can be linked straight to a feature.
+  if(location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
+  if(name === 'treasury') pythAuto();
+}
+
+/* Arrow-key navigation, as a tablist is expected to behave. */
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  const tabs = [...document.querySelectorAll('.tab-btn')];
+  const i = tabs.indexOf(document.activeElement);
+  if(i === -1) return;
+  let next = null;
+  if(e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+  else if(e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+  else if(e.key === 'Home') next = tabs[0];
+  else if(e.key === 'End') next = tabs[tabs.length - 1];
+  if(!next) return;
+  e.preventDefault();
+  next.focus();
+  next.click();
+});
 
 /* Ask the wallet to sit on the configured chain, adding it if unknown.
    Throws if it ends up anywhere else — callers must not send a transaction
@@ -649,8 +872,9 @@ async function disconnect(){
   $('balPill').style.display = 'none';
   $('histList').innerHTML = '<p class="empty">Connect your wallet and load — every Pay on Arc payment you sent or received, straight from the chain.</p>';
   $('rcList').innerHTML = '<p class="empty">Connect & load — outgoing payments show a recall countdown, incoming ones a claim button.</p>';
-  $('mySubsList').innerHTML = '<p class="empty">Connect & load to see subscriptions you\'re paying.</p>';
-  $('myMerchList').innerHTML = '<p class="empty">Nobody subscribed to you yet. Share your address with a label 😎</p>';
+  $('mySubsList').innerHTML = '<p class="empty"><b>Nothing yet</b>Connect your wallet and refresh to see what you are paying for.</p>';
+  $('myMerchList').innerHTML = '<p class="empty"><b>No subscribers yet</b>Share your address with a plan label and they will show up here.</p>';
+  $('subStats').style.display = 'none';
   rcItems = [];
   merchSubsCache = [];
   // Anything that signs on a timer must stop the moment the wallet goes away.
@@ -759,11 +983,27 @@ async function sendSplit(){
 }
 
 /* ── header gas pill ── */
+/* Rough gas for one subscription charge — an ERC-20 transferFrom plus a
+   storage write. Used only to price the hero's economics strip. */
+const CHARGE_GAS = 80000n;
+
+function money(n){
+  if(n >= 1)     return '$' + n.toFixed(2);
+  if(n >= 0.01)  return '$' + n.toFixed(3);
+  if(n >= 0.0001)return '$' + n.toFixed(5);
+  return '<$0.0001';
+}
+
 async function refreshGas(){
   if(!readProvider) return;
   try{
     const fee = await readProvider.send('eth_gasPrice', []);
-    $('gasPill').textContent = '⛽ ' + (Number(BigInt(fee)) / 1e9).toFixed(2) + ' gwei';
+    const wei = BigInt(fee);
+    $('gasPill').textContent = '⛽ ' + (Number(wei) / 1e9).toFixed(2) + ' gwei';
+    // Native gas token is USDC here, so the gas cost *is* the dollar cost.
+    const perCharge = Number(formatNative(wei * CHARGE_GAS));
+    $('econCost').textContent = money(perCharge);
+    $('econYear').textContent = money(perCharge * 12);
   }catch(_){}
 }
 /* ── CROSS-CHAIN (Chainlink CCIP) ──
@@ -847,7 +1087,7 @@ async function sendCcip(){
 async function loadSepoliaMessages(){
   if(!requireReady()) return;
   const box = $('ccInbox');
-  box.innerHTML = '<p class="empty">Reading your receiver contract on Ethereum Sepolia…</p>';
+  box.innerHTML = `<p class="empty"><span class="spin"></span>Reading your receiver contract on ${escHtml(DEST_NAME)}…</p>`;
   try{
     const c = new ethers.Contract(DEST_RECEIVER, RECEIVER_ABI, sepoliaProvider);
     const list = await c.getMessages(0, 20); // newest first
@@ -937,7 +1177,7 @@ function parseAll(logs){
 async function loadHistory(){
   if(!requireReady()) return;
   if(!userAddress){ await connect(); if(!userAddress) return; }
-  $('histList').innerHTML = '<p class="empty">Reading PaymentSent events from chain…</p>';
+  $('histList').innerHTML = '<p class="empty"><span class="spin"></span>Reading payment events from the chain…</p>' + skeletons(2);
   try{
     const me = userAddress.toLowerCase();
     const sig = iface.getEvent('PaymentSent').topicHash;
@@ -994,7 +1234,7 @@ let rcItems = [];
 async function loadRecalls(){
   if(!requireReady()) return;
   if(!userAddress){ await connect(); if(!userAddress) return; }
-  $('rcList').innerHTML = '<p class="empty">Reading recallable payments from chain…</p>';
+  $('rcList').innerHTML = '<p class="empty"><span class="spin"></span>Reading recallable payments from the chain…</p>' + skeletons(2);
   try{
     const me = userAddress.toLowerCase();
     const sig = iface.getEvent('RecallableCreated').topicHash;
@@ -1113,6 +1353,11 @@ function boot(){
   refreshGas();
   setInterval(refreshGas, 15000);
   checkIncoming();
+
+  // A pay-link should land on the payment it is asking for, not the overview.
+  const wanted = incoming ? 'pay' : location.hash.slice(1);
+  if(wanted && TABS.includes(wanted)) go(wanted);
+  else document.body.classList.remove('engaged');   // first visit sees the pitch
 }
 
 window.__ethersReady
@@ -1214,20 +1459,36 @@ async function fetchSubs(ids){
 function subRow(s, mine){
   const amt = Number(ethers.formatUnits(s.amount,6)).toFixed(2);
   const who = mine ? ('to ' + short(s.merchant)) : ('from ' + short(s.subscriber));
-  const state = !s.active ? '<span style="color:var(--muted)">cancelled</span>'
-    : subDue(s) ? '<span style="color:var(--amber)">DUE NOW</span>'
-    : '<span style="color:var(--green)">next in ' + subLeft(s) + '</span>';
+  const due = subDue(s);
+  const badge = !s.active ? '<span class="badge off">cancelled</span>'
+    : due ? '<span class="badge due">due now</span>'
+          : `<span class="badge live">next in ${subLeft(s)}</span>`;
   const btn = !s.active ? ''
-    : mine ? `<button class="connect-btn" onclick="cancelSub('${s.id}')">Cancel</button>`
-    : subDue(s) ? `<button class="connect-btn primary" onclick="chargeSub('${s.id}')">Charge now</button>`
-                : `<button class="connect-btn" onclick="cancelSub('${s.id}')">Cancel</button>`;
-  return `<div class="receipt" style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px;">
-    <div style="min-width:0;">
-      <b>${escHtml(s.label||'subscription')}</b> · ${amt} USDC / ${intervalName(s.interval)}<br/>
-      <span style="color:var(--muted);font-size:12px;">#${s.id} · ${who} · ${state}</span>
+    : (!mine && due) ? `<button class="connect-btn primary" onclick="chargeSub('${s.id}')">Charge now</button>`
+                     : `<button class="connect-btn" onclick="cancelSub('${s.id}')">Cancel</button>`;
+  return `<div class="sub-row${due && s.active ? ' due' : ''}">
+    <div class="sr-main">
+      <div class="sr-title">${escHtml(s.label||'subscription')} ${badge}</div>
+      <div class="sr-meta">#${s.id} · ${who} · every ${intervalName(s.interval)}</div>
     </div>
+    <div class="sr-amt">${amt} USDC</div>
     <div>${btn}</div>
   </div>`;
+}
+
+function skeletons(n){ return Array.from({length:n}, () => '<div class="skeleton"></div>').join(''); }
+
+/* Merchant-side headline numbers — the thing a merchant actually cares about. */
+function renderSubStats(activeMerch){
+  $('subStats').style.display = activeMerch.length ? '' : 'none';
+  if(!activeMerch.length) return;
+  $('statSubs').textContent = activeMerch.length;
+  const monthly = activeMerch.reduce((t,s) =>
+    t + Number(ethers.formatUnits(s.amount,6)) * (2592000/Number(s.interval)), 0);
+  $('statMrr').textContent = monthly.toFixed(2);
+  const upcoming = activeMerch.map(s => Number(s.nextChargeAt)).sort((a,b)=>a-b)[0];
+  $('statNext').textContent = upcoming === undefined ? '—'
+    : (upcoming <= Math.floor(Date.now()/1000) ? 'due now' : subLeft({ nextChargeAt: upcoming }));
 }
 
 async function loadSubs(){
@@ -1239,21 +1500,26 @@ async function loadSubs(){
     const [myIds, merchIds] = await Promise.all([
       c.listBySubscriber(userAddress), c.listByMerchant(userAddress)
     ]);
+    $('mySubsList').innerHTML = skeletons(2);
+    $('myMerchList').innerHTML = skeletons(2);
+
     const mine = await fetchSubs(myIds);
     merchSubsCache = await fetchSubs(merchIds);
 
     $('mySubsList').innerHTML = mine.length
       ? mine.map(s=>subRow(s,true)).join('')
-      : '<p class="empty">No subscriptions yet.</p>';
+      : '<p class="empty"><b>Nothing yet</b>You are not paying for any subscription on this contract.</p>';
 
     const activeMerch = merchSubsCache.filter(s=>s.active);
-    const monthly = activeMerch.reduce((t,s)=> t + Number(ethers.formatUnits(s.amount,6)) * (2592000/Number(s.interval)), 0);
-    $('myMerchList').innerHTML = (activeMerch.length
-      ? `<div class="hint" style="margin-bottom:10px;">Active subscribers: <b>${activeMerch.length}</b> · est. monthly revenue: <b>${monthly.toFixed(2)} USDC</b></div>`
-      : '') + (activeMerch.length
+    renderSubStats(activeMerch);
+    $('myMerchList').innerHTML = activeMerch.length
       ? activeMerch.map(s=>subRow(s,false)).join('')
-      : '<p class="empty">Nobody subscribed to you yet. Share your address with a label 😎</p>');
-  }catch(e){ toast('Load failed: '+(e.shortMessage||e.message||'').slice(0,60)); }
+      : '<p class="empty"><b>No subscribers yet</b>Share your address with a plan label and they will show up here.</p>';
+  }catch(e){
+    $('mySubsList').innerHTML = '<p class="empty"><b>Could not load</b>' + escHtml((e.shortMessage||e.message||'').slice(0,80)) + '</p>';
+    $('myMerchList').innerHTML = '';
+    toast('Load failed: '+(e.shortMessage||e.message||'').slice(0,60));
+  }
 }
 
 async function chargeSub(id){
@@ -1496,12 +1762,14 @@ function kpStart(){
   if (kpTimer) return;
   kpTimer = setInterval(kpTick, 15000);
   kpTick();
-  $('kpState').textContent = '🟢 agent ONLINE — scanning subscriptions every 15s';
+  $('kpState').textContent = 'agent online — scanning every 15s';
+  $('kpDot').classList.add('on');
   kpLog('▶ Agent started.','ok');
 }
 function kpStop(){
   clearInterval(kpTimer); kpTimer = null;
   $('kpState').textContent = 'agent offline';
+  $('kpDot').classList.remove('on');
   kpLog('■ Agent stopped.');
 }
 

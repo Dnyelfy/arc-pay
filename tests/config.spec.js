@@ -33,6 +33,9 @@ test.describe('network configuration', () => {
     await page.goto('/index.html');
     await expect(page.locator('body > div').first()).toContainText('Configuration incomplete');
 
+    // The unconfigured build never boots, so no tab logic runs — reveal the
+    // pay panel directly and prove the form still refuses to sign.
+    await page.evaluate(() => document.getElementById('sec-pay').classList.add('active'));
     await page.fill('#payTo', '0x2222222222222222222222222222222222222222');
     await page.fill('#payAmt', '1');
     await page.click('button:has-text("Send payment")');

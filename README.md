@@ -1,11 +1,31 @@
 # Pay on Arc
 
-USDC-native payments on Arc: direct payments with an on-chain note, pay-links,
-20-way splits, recallable payments, subscriptions with an autonomous billing
-agent, Chainlink CCIP cross-chain messaging, and a Pyth-fed treasury agent.
+**Subscriptions that collect themselves.**
+
+A $5 monthly plan cannot survive on a chain where collecting it costs more than
+it earns. On Arc a charge costs a rounding error and gas is USDC, so a
+subscription can pull its own money every period with nobody clicking anything —
+and a billing agent living in the page can do the pulling.
+
+That is the product. Around it: payments with an on-chain note, pay-links,
+20-way splits, recallable payments, Chainlink CCIP cross-chain messaging, and a
+Pyth-fed treasury agent that rebalances USDC against EURC.
 
 Single static page — `index.html` — plus a vendored copy of ethers and a
 Playwright test suite.
+
+## The tabs
+
+| Tab | What it does |
+| --- | --- |
+| **Subscriptions** | Approve USDC once; each period is pulled only when due. Cancel on-chain from either side. |
+| **Billing Agent** | A burner-key worker in the page that scans the contract every 15s and charges what is due, unattended. Testnet only. |
+| Pay & Link | A payment with a note written on-chain, or a shareable pay-link that prefills it. |
+| Split | One transaction, equal shares to up to 20 wallets, dust returned. |
+| Recallable | The recipient can claim; if they never do, the sender takes it back after the window. |
+| Cross-Chain | A message through the CCIP router that lands and runs code on the far chain. |
+| Treasury | Reads the Pyth EUR/USD feed and pays a keeper to settle drift back into band. |
+| Receipts | Your payments, read from the contract's own events. |
 
 ## Running locally
 
@@ -84,9 +104,19 @@ and a stubbed EIP-1193 wallet — no chain, no funds, no network.
 | `security.spec.js` | Escaping of chain- and URL-sourced strings, script pinning |
 | `chain-guard.spec.js` | Wrong-network refusal, chain add, disconnect cleanup |
 | `config.spec.js` | Unconfigured-network refusal |
+| `navigation.spec.js` | Landing pitch, tab folding, deep links, keyboard tablist, live pricing |
 
 If Playwright cannot download its own browser, point it at an existing one:
 
 ```bash
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chrome npm test
+```
+
+### Screenshots
+
+`tests/shot.js` renders the page against the same stubs and writes PNGs:
+
+```bash
+node tests/static-server.js &
+node tests/shot.js ./shots
 ```

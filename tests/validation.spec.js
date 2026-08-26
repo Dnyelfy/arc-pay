@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { setup, waitBooted } = require('./harness');
+const { setup, waitBooted, goTab } = require('./harness');
 
 test.beforeEach(async ({ page }) => {
   await setup(page);
@@ -31,6 +31,7 @@ test.describe('amount parsing', () => {
 
 test.describe('form validation', () => {
   test('payment refuses an invalid recipient', async ({ page }) => {
+    await goTab(page, 'pay');
     await page.fill('#payTo', 'not-an-address');
     await page.fill('#payAmt', '1');
     await page.click('button:has-text("Send payment")');
@@ -38,6 +39,7 @@ test.describe('form validation', () => {
   });
 
   test('payment refuses a zero or negative amount', async ({ page }) => {
+    await goTab(page, 'pay');
     await page.fill('#payTo', '0x2222222222222222222222222222222222222222');
     await page.fill('#payAmt', '-5');
     await page.click('button:has-text("Send payment")');
@@ -45,7 +47,7 @@ test.describe('form validation', () => {
   });
 
   test('split refuses a line that is not an address, naming the line', async ({ page }) => {
-    await page.click('button:has-text("Split")');
+    await goTab(page, 'split');
     await page.fill('#splitTo', '0x2222222222222222222222222222222222222222\nrubbish');
     await page.fill('#splitAmt', '10');
     await page.click('button:has-text("Split & send")');
@@ -53,14 +55,14 @@ test.describe('form validation', () => {
   });
 
   test('split preview handles a comma decimal', async ({ page }) => {
-    await page.click('button:has-text("Split")');
+    await goTab(page, 'split');
     await page.fill('#splitTo', '0x2222222222222222222222222222222222222222\n0x3333333333333333333333333333333333333333');
     await page.fill('#splitAmt', '10,50');
     await expect(page.locator('#splitPreview')).toHaveText(/2 recipient\(s\).*5\.2500 USDC each/);
   });
 
   test('split refuses more than 20 recipients', async ({ page }) => {
-    await page.click('button:has-text("Split")');
+    await goTab(page, 'split');
     const many = Array.from({ length: 21 }, (_, i) =>
       '0x' + String(i + 1).padStart(2, '0').repeat(20)).join('\n');
     await page.fill('#splitTo', many);
@@ -71,7 +73,7 @@ test.describe('form validation', () => {
 
   test('subscription refuses a negative amount', async ({ page }) => {
     // parseFloat used to let -5 through: truthy and not NaN.
-    await page.click('button:has-text("Subscriptions")');
+    await goTab(page, 'subs');
     await page.fill('#subTo', '0x2222222222222222222222222222222222222222');
     await page.fill('#subAmt', '-5');
     await page.click('button:has-text("Subscribe")');
@@ -79,7 +81,7 @@ test.describe('form validation', () => {
   });
 
   test('treasury deposit refuses a non-numeric amount', async ({ page }) => {
-    await page.click('button:has-text("Treasury")');
+    await goTab(page, 'treasury');
     await page.fill('#tDepAmt', 'abc');
     await page.click('button:has-text("Fund USDC")');
     await expect(page.locator('#tStatus')).toHaveText(/above zero/i);

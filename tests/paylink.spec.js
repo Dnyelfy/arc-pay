@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { setup, waitBooted } = require('./harness');
+const { setup, waitBooted, goTab } = require('./harness');
 
 test.describe('pay-links', () => {
   test('builds a link with a normalized amount and copies it', async ({ page, context }) => {
@@ -8,6 +8,7 @@ test.describe('pay-links', () => {
     await setup(page);
     await page.goto('/index.html');
     await waitBooted(page);
+    await goTab(page, 'pay');
 
     await page.fill('#payTo', '0x2222222222222222222222222222222222222222');
     await page.fill('#payAmt', '2,50');
@@ -26,6 +27,7 @@ test.describe('pay-links', () => {
     await setup(page);
     await page.goto('/index.html');
     await waitBooted(page);
+    await goTab(page, 'pay');
     await page.fill('#payTo', '0x2222222222222222222222222222222222222222');
     await page.fill('#payAmt', '0');
     await page.click('button:has-text("Create pay-link")');

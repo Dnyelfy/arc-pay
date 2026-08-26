@@ -165,5 +165,11 @@ async function waitBooted(page) {
     null, { timeout: 15000 });
 }
 
-module.exports = { setup, installWallet, stubEthersCdn, stubRpc, stubExternal, waitBooted,
+/** Select a feature tab by name (subs, agent, pay, split, recall, bridge, treasury, history). */
+async function goTab(page, name) {
+  await page.click('#tab-' + name);
+  await page.waitForSelector('#sec-' + name + '.active');
+}
+
+module.exports = { setup, installWallet, stubEthersCdn, stubRpc, stubExternal, waitBooted, goTab,
                    CHAIN_ID, CHAIN_ID_HEX, ACCOUNT, TX_HASH };
