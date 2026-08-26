@@ -11,9 +11,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --bg:#0a0a0f;--bg2:#111118;--bg3:#16161f;
-  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
-  --text:#f0eff8;--muted:#7c7b8f;--dim:#3a394a;
+  --bg:#0d0d13;--bg2:#14141c;--bg3:#1a1a24;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+  /* --text is deliberately not #fff: full-white on near-black glares.
+     --muted carries body copy and must stay legible; --dim is decoration only. */
+  --text:#e7e6f0;--muted:#9c9bb0;--dim:#55546a;
   --accent:#5b6bff;--accent2:#7c4dff;--accent-glow:rgba(91,107,255,0.18);
   --green:#1de9b6;--green-bg:rgba(29,233,182,0.08);--green-border:rgba(29,233,182,0.25);
   --amber:#ffc107;--amber-bg:rgba(255,193,7,0.08);
@@ -30,12 +32,12 @@ html{background:var(--bg);color:var(--text);font-family:var(--font);}
 body{min-height:100vh;display:flex;flex-direction:column;}
 body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.5;}
 .wrap{width:min(1040px,92vw);margin:0 auto;position:relative;z-index:1;}
-header{padding:20px 0;border-bottom:0.5px solid var(--border);position:sticky;top:0;background:rgba(10,10,15,0.88);backdrop-filter:blur(20px);z-index:100;}
+header{padding:20px 0;border-bottom:0.5px solid var(--border);position:sticky;top:0;background:rgba(13,13,19,0.9);backdrop-filter:blur(20px);z-index:100;}
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .logo{font-weight:800;font-size:20px;letter-spacing:-0.5px;}
 .logo em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
 .hright{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.pill{font-family:var(--mono);font-size:11.5px;padding:6px 12px;border:0.5px solid var(--border2);border-radius:99px;color:var(--muted);}
+.pill{font-family:var(--mono);font-size:12px;padding:6px 12px;border:0.5px solid var(--border2);border-radius:var(--r-pill);color:var(--muted);}
 .pill.gas{color:var(--green);border-color:var(--green-border);}
 .connect-btn{font-family:var(--font);font-weight:700;font-size:13px;padding:9px 16px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;transition:all .2s;}
 .connect-btn:hover{border-color:var(--accent);box-shadow:0 0 18px var(--accent-glow);}
@@ -52,13 +54,13 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;gap:1
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .card{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:22px;margin-bottom:14px;}
 .card h2{font-size:16px;font-weight:700;margin-bottom:14px;}
-label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:14px 0 6px;}
+label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin:var(--s3) 0 var(--s1);}
 input,textarea{width:100%;font-family:var(--mono);font-size:14px;padding:12px 14px;border-radius:10px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);outline:none;transition:border .2s;}
 input:focus,textarea:focus{border-color:var(--accent);}
 textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
-.hint{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.7;}
-.status{font-family:var(--mono);font-size:12px;margin-top:12px;color:var(--muted);min-height:16px;word-break:break-all;}
+.hint{font-size:13px;color:var(--muted);margin-top:var(--s2);line-height:1.7;max-width:70ch;}
+.status{font-size:13px;margin-top:var(--s2);color:var(--muted);min-height:18px;word-break:break-word;line-height:1.6;}
 .status.ok{color:var(--green);}
 .status.err{color:var(--red);}
 .status a{color:var(--accent);}
@@ -77,14 +79,14 @@ textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .gasbig span{font-family:var(--mono);font-size:13px;color:var(--muted);}
 .preset{font-family:var(--mono);font-size:11.5px;padding:7px 12px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;}
 .preset.active{border-color:var(--green-border);color:var(--green);background:var(--green-bg);}
-.cost{font-family:var(--mono);font-size:13px;color:var(--text);margin-top:14px;line-height:1.9;}
+.cost{font-size:13.5px;color:var(--muted);margin-top:var(--s3);line-height:1.9;}
 .cost b{color:var(--green);}
 /* cross-chain lane görseli */
 .lane{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted);margin:6px 0 2px;flex-wrap:wrap;}
 .lane .chip{padding:6px 12px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);}
 .lane .chip.arc{border-color:var(--accent);color:var(--accent);}
 .lane .arrow{color:var(--accent2);font-size:16px;}
-footer{margin-top:auto;border-top:0.5px solid var(--border);padding:var(--s5) 0;font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.9;}
+footer{margin-top:auto;border-top:0.5px solid var(--border);padding:var(--s5) 0;font-size:13px;color:var(--muted);line-height:1.9;}
 footer a{color:var(--muted);text-decoration:none;}
 footer a:hover{color:var(--accent);}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg3);border:0.5px solid var(--border2);border-radius:12px;padding:12px 20px;font-family:var(--mono);font-size:12.5px;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;}
@@ -101,10 +103,10 @@ input:focus-visible,textarea:focus-visible{border-color:var(--accent);box-shadow
 /* ── eyebrow / section rhythm ── */
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin-bottom:var(--s3);display:flex;align-items:center;gap:8px;}
 .eyebrow::before{content:'';width:22px;height:1px;background:linear-gradient(90deg,var(--accent),transparent);}
-.lede{color:var(--muted);font-size:15px;line-height:1.65;max-width:58ch;}
+.lede{color:var(--muted);font-size:15.5px;line-height:1.7;max-width:56ch;}
 .section-head{margin:var(--s6) 0 var(--s4);}
 .section-head h2{font-size:20px;font-weight:800;letter-spacing:-0.4px;}
-.section-head p{color:var(--muted);font-size:13.5px;margin-top:var(--s1);line-height:1.6;max-width:60ch;}
+.section-head p{color:var(--muted);font-size:14.5px;margin-top:var(--s2);line-height:1.7;max-width:64ch;}
 .card-sub{color:var(--muted);font-size:13px;line-height:1.6;margin:-6px 0 var(--s3);}
 
 /* ── hero ── */
@@ -118,15 +120,15 @@ body.engaged .hero{display:none;}
 .hero-cta{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s5);}
 .btn-lg{font-size:14px;padding:13px 22px;}
 
-/* ── the economics strip: the actual argument for this chain ── */
-.econ{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--border);
-  border:0.5px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-top:var(--s6);}
-.econ div{background:var(--bg2);padding:var(--s4);}
-.econ b{display:block;font-family:var(--mono);font-size:clamp(20px,3vw,26px);font-weight:500;color:var(--text);letter-spacing:-0.5px;}
+/* ── the economics line: the argument for this chain, in one glance.
+   This was three boxes of monospace prose sitting between the headline and
+   the tabs — the numbers earn their place, the packaging did not. ── */
+.econ{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s4);margin-top:var(--s5);
+  font-size:13.5px;color:var(--muted);line-height:1.9;}
+.econ i{font-style:normal;}
+.econ b{font-family:var(--mono);font-weight:500;font-size:15px;color:var(--text);letter-spacing:-0.2px;}
 .econ b.good{color:var(--green);}
-.econ b.bad{color:var(--red);text-decoration:line-through;text-decoration-thickness:1px;opacity:0.75;}
-.econ span{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:var(--s1);line-height:1.5;}
-.econ-note{font-family:var(--mono);font-size:11.5px;color:var(--muted);opacity:0.8;margin-top:var(--s3);line-height:1.7;}
+.econ .sep{color:var(--dim);}
 
 /* ── stat row ── */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:var(--s2);margin-bottom:var(--s3);}
@@ -135,7 +137,7 @@ body.engaged .hero{display:none;}
 .stat span{display:block;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-top:var(--s1);}
 
 /* ── empty + loading states ── */
-.empty{font-family:var(--mono);font-size:12.5px;color:var(--muted);padding:var(--s5) var(--s4);text-align:center;line-height:1.7;
+.empty{font-size:13.5px;color:var(--muted);padding:var(--s5) var(--s4);text-align:center;line-height:1.7;
   border:1px dashed var(--border2);border-radius:var(--r-md);background:rgba(255,255,255,0.012);}
 .empty b{display:block;color:var(--muted);font-weight:400;margin-bottom:var(--s1);}
 .skeleton{height:64px;border-radius:var(--r-md);margin-bottom:var(--s2);
@@ -153,7 +155,7 @@ body.engaged .hero{display:none;}
 .sub-row.due{border-color:var(--amber-bg);background:linear-gradient(90deg,var(--amber-bg),var(--bg3) 60%);}
 .sub-row .sr-main{min-width:0;flex:1;}
 .sub-row .sr-title{font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.sub-row .sr-meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.6;word-break:break-word;}
+.sub-row .sr-meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px;line-height:1.6;word-break:break-word;}
 .sub-row .sr-amt{font-family:var(--mono);font-size:15px;color:var(--text);white-space:nowrap;}
 .badge{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:var(--r-pill);border:0.5px solid var(--border2);color:var(--muted);}
 .badge.due{color:var(--amber);border-color:var(--amber);background:var(--amber-bg);}
@@ -177,7 +179,7 @@ body.engaged .hero{display:none;}
 .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:var(--s2);margin-top:var(--s3);}
 .step{background:var(--bg3);border:0.5px solid var(--border);border-radius:var(--r-md);padding:var(--s3) var(--s4);}
 .step b{display:block;font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:0.1em;margin-bottom:6px;}
-.step span{font-size:13px;color:var(--muted);line-height:1.6;}
+.step span{font-size:13.5px;color:var(--muted);line-height:1.7;}
 
 /* ── copyable address ── */
 .copy{font-family:var(--mono);font-size:12px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 5px;border-radius:6px;}
@@ -209,29 +211,30 @@ body.engaged .hero{display:none;}
   <section class="hero">
     <div class="eyebrow">Recurring payments, native to the chain</div>
     <h1>Subscriptions that <em>collect themselves.</em></h1>
-    <p class="lede">A $5 monthly plan cannot survive on a chain where collecting it costs more than it earns. Here a charge costs the rounding error below, and gas is USDC — so a subscription can pull its own money, every period, with nobody clicking anything. Set one up, start the billing agent, and let it invoice your subscribers while you sleep.</p>
+    <p class="lede">A $5 monthly plan cannot survive where collecting it costs more than it earns. Here a charge costs the rounding error below — so a subscription can pull its own money, every period, with nobody clicking anything.</p>
     <div class="hero-cta">
       <button class="connect-btn primary btn-lg" onclick="go('subs')">Start a subscription</button>
-      <button class="connect-btn btn-lg" onclick="go('agent')">🤖 Meet the billing agent</button>
+      <button class="connect-btn btn-lg" onclick="go('agent')">Meet the billing agent</button>
     </div>
 
-    <div class="econ">
-      <div><b class="good" id="econCost">—</b><span>estimated cost of one on-chain charge, at the gas price in the header right now</span></div>
-      <div><b id="econYear">—</b><span>to bill a monthly plan for a whole year — twelve charges</span></div>
-      <div><b>USDC</b><span>is the gas token, so a merchant never holds a second asset just to get paid</span></div>
-    </div>
-    <p class="econ-note">Estimated from the live Arc gas price × ~80,000 gas for a charge. Where a single charge costs dollars, small recurring plans are not economically possible at all — that is the whole reason this app lives here.</p>
+    <p class="econ">
+      <i>One charge <b class="good" id="econCost">—</b></i>
+      <span class="sep">·</span>
+      <i>a year of monthly billing <b id="econYear">—</b></i>
+      <span class="sep">·</span>
+      <i>gas paid in <b>USDC</b></i>
+    </p>
   </section>
 
   <div class="tabs" role="tablist" aria-label="Pay on Arc features">
-    <button class="tab-btn active" role="tab" aria-selected="true"  aria-controls="sec-subs"     id="tab-subs"     onclick="go('subs',this)">🔁 Subscriptions</button>
-    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-agent"    id="tab-agent"    tabindex="-1" onclick="go('agent',this)">🤖 Billing Agent</button>
-    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-pay"      id="tab-pay"      tabindex="-1" onclick="go('pay',this)">💸 Pay &amp; Link</button>
-    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-split"    id="tab-split"    tabindex="-1" onclick="go('split',this)">🔀 Split</button>
-    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-recall"   id="tab-recall"   tabindex="-1" onclick="go('recall',this)">⏳ Recallable</button>
-    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-bridge"   id="tab-bridge"   tabindex="-1" onclick="go('bridge',this)">🌉 Cross-Chain</button>
-    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-treasury" id="tab-treasury" tabindex="-1" onclick="go('treasury',this)">💶 Treasury</button>
-    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-history"  id="tab-history"  tabindex="-1" onclick="go('history',this)">🧾 Receipts</button>
+    <button class="tab-btn active" role="tab" aria-selected="true"  aria-controls="sec-subs"     id="tab-subs"     onclick="go('subs',this)">Subscriptions</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-agent"    id="tab-agent"    tabindex="-1" onclick="go('agent',this)">Billing Agent</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-pay"      id="tab-pay"      tabindex="-1" onclick="go('pay',this)">Pay &amp; Link</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-split"    id="tab-split"    tabindex="-1" onclick="go('split',this)">Split</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-recall"   id="tab-recall"   tabindex="-1" onclick="go('recall',this)">Recallable</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-bridge"   id="tab-bridge"   tabindex="-1" onclick="go('bridge',this)">Cross-Chain</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-treasury" id="tab-treasury" tabindex="-1" onclick="go('treasury',this)">Treasury</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-history"  id="tab-history"  tabindex="-1" onclick="go('history',this)">Receipts</button>
   </div>
 
   <!-- PAY -->
@@ -241,7 +244,7 @@ body.engaged .hero{display:none;}
       <p>A payment carries a note on-chain, so the receipt explains itself later. Or turn it into a pay-link: the other side opens it, sees exactly what is being asked for, and pays in one tap.</p>
     </div>
     <div class="card" id="incomingCard" style="display:none;border-color:var(--green-border);">
-      <h2>📥 Payment request</h2>
+      <h2>Payment request</h2>
       <div class="receipt" id="incomingReceipt"></div>
       <div class="row"><button class="connect-btn primary" onclick="payIncoming()">Pay this request</button></div>
       <div class="status" id="incomingStatus"></div>
@@ -256,7 +259,7 @@ body.engaged .hero{display:none;}
       <input id="payNote" placeholder="coffee ☕ / invoice #42 / gm" maxlength="120"/>
       <div class="row">
         <button class="connect-btn primary" onclick="sendPay()">Send payment</button>
-        <button class="connect-btn" onclick="makeLink()">Create pay-link instead 🔗</button>
+        <button class="connect-btn" onclick="makeLink()">Create pay-link instead</button>
       </div>
       <div class="status" id="payStatus"></div>
       <div class="hint">A pay-link prefills this form for whoever opens it — share it anywhere, they pay in one tap.</div>
@@ -322,7 +325,7 @@ body.engaged .hero{display:none;}
       <p>A message leaves Arc through the Chainlink CCIP router, crosses a live lane, and runs code in a contract on the far side — where it is stored and emits an event you can read back below. The fee is paid in USDC, like everything else here.</p>
     </div>
     <div class="card feature">
-      <h2>🌉 Send a message across chains</h2>
+      <h2>Send a message across chains</h2>
       <p class="hint" style="margin:0 0 8px;">Powered by Chainlink CCIP. Your message leaves Arc Testnet and is delivered to Ethereum Sepolia — one of the few live cross-chain lanes on Arc. The fee is paid in USDC, like everything else here.</p>
       <div class="lane">
         <span class="chip arc" id="ccLaneSrc">—</span>
@@ -340,7 +343,7 @@ body.engaged .hero{display:none;}
       <div class="hint">Delivery to Sepolia takes a few minutes while Chainlink's network finalizes it. Your message lands in the receiver contract, gets stored, and emits an event.</div>
     </div>
     <div class="card">
-      <h2>📨 Messages on <span id="ccDestName">—</span></h2>
+      <h2>Messages on <span id="ccDestName">—</span></h2>
       <p class="hint" style="margin:0 0 4px;">Read straight from your receiver contract <a id="ccReceiverLink" href="#" target="_blank" rel="noreferrer" style="color:var(--accent)">—</a> — every message that crossed from Arc and actually landed here.</p>
       <div class="row" style="margin-top:8px;"><button class="connect-btn" onclick="loadSepoliaMessages()">↻ Load messages on Sepolia</button></div>
       <div id="ccInbox"><p class="empty">Send a cross-chain message, wait a few minutes, then load — this proves it arrived and ran code on the other chain.</p></div>
@@ -387,13 +390,13 @@ body.engaged .hero{display:none;}
           <label for="kpFundAmt">Fund gas (USDC)</label>
           <input id="kpFundAmt" placeholder="1.00" inputmode="decimal"/>
         </div>
-        <button class="connect-btn" onclick="kpFund()">⛽ Fund gas</button>
+        <button class="connect-btn" onclick="kpFund()">Fund gas</button>
       </div>
       <div class="row" style="margin-top:12px;">
         <button class="connect-btn primary" onclick="kpStart()">▶ Start agent</button>
         <button class="connect-btn" onclick="kpStop()">■ Stop</button>
-        <button class="connect-btn" onclick="kpSweep()">💸 Sweep gas back</button>
-        <button class="connect-btn" onclick="kpReset()">🗑 New key</button>
+        <button class="connect-btn" onclick="kpSweep()">Sweep gas back</button>
+        <button class="connect-btn" onclick="kpReset()">Delete key</button>
       </div>
       <div class="term-wrap">
         <div class="term-bar">
@@ -433,7 +436,7 @@ body.engaged .hero{display:none;}
     </div>
 
     <div class="card feature">
-      <h2>🔁 Start a subscription</h2>
+      <h2>Start a subscription</h2>
       <label for="subTo">Merchant / recipient address — who gets paid</label>
       <input id="subTo" placeholder="0x…" spellcheck="false"/>
       <label for="subAmt">Amount per period (USDC)</label>
@@ -456,7 +459,7 @@ body.engaged .hero{display:none;}
 
     <div class="card">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:var(--s3);">
-        <h2 style="margin:0;">📤 Paying out <span style="font-weight:400;font-size:12px;color:var(--muted)">— subscriptions you fund</span></h2>
+        <h2 style="margin:0;">Paying out <span style="font-weight:400;font-size:12px;color:var(--muted)">— subscriptions you fund</span></h2>
         <button class="connect-btn" onclick="loadSubs()">↻ Refresh</button>
       </div>
       <div id="mySubsList"><p class="empty"><b>Nothing yet</b>Connect your wallet and refresh to see what you are paying for.</p></div>
@@ -464,13 +467,13 @@ body.engaged .hero{display:none;}
 
     <div class="card">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:var(--s3);">
-        <h2 style="margin:0;">📥 Getting paid <span style="font-weight:400;font-size:12px;color:var(--muted)">— people subscribed to you</span></h2>
+        <h2 style="margin:0;">Getting paid <span style="font-weight:400;font-size:12px;color:var(--muted)">— people subscribed to you</span></h2>
         <button class="connect-btn" onclick="loadSubs()">↻ Refresh</button>
       </div>
       <div id="myMerchList"><p class="empty"><b>No subscribers yet</b>Share your address with a plan label and they will show up here.</p></div>
       <div class="row">
-        <button class="connect-btn primary" onclick="collectDue()">💰 Collect everything due</button>
-        <button class="connect-btn" id="autoCollectBtn" onclick="toggleAutoCollect()">🤖 Auto-collector: OFF</button>
+        <button class="connect-btn primary" onclick="collectDue()">Collect everything due</button>
+        <button class="connect-btn" id="autoCollectBtn" onclick="toggleAutoCollect()">Auto-collector: OFF</button>
       </div>
       <div class="status" id="merchStatus"></div>
       <div class="hint">A due charge can be triggered by anyone — that is what makes it automatable. Leave the auto-collector on and this tab bills for you; hand the job to the <a href="#agent" onclick="go('agent');return false;" style="color:var(--accent)">billing agent</a> and you can close the tab entirely.</div>
@@ -484,7 +487,7 @@ body.engaged .hero{display:none;}
       <p>It holds USDC and EURC and tries to keep a fixed split of value between them. Every EUR/USD tick moves that split, so the agent reads the Pyth feed and — once drift breaks the band — pays any keeper a bonus to settle it back on-chain.</p>
     </div>
     <div class="card feature">
-      <h2>💶 Treasury agent — reads Pyth, holds the mix</h2>
+      <h2>Treasury agent — reads Pyth, holds the mix</h2>
       <div class="hint" style="margin-bottom:16px;">The treasury holds two stablecoins — <b>USDC</b> and <b>EURC</b> — and tries to keep a fixed value split between them. Every EUR/USD tick shifts that split, so the agent reads the <b>Pyth EUR/USD</b> feed and, when the mix drifts out of band, lets any keeper settle it back on-chain. Live oracle · Arc Testnet.</div>
       <div class="lane" style="margin-bottom:2px;">
         <span class="chip">Pyth oracle</span><span class="arrow">→</span>
@@ -878,7 +881,7 @@ async function disconnect(){
   rcItems = [];
   merchSubsCache = [];
   // Anything that signs on a timer must stop the moment the wallet goes away.
-  if(autoCollectTimer){ clearInterval(autoCollectTimer); autoCollectTimer = null; $('autoCollectBtn').textContent = '🤖 Auto-collector: OFF'; }
+  if(autoCollectTimer){ clearInterval(autoCollectTimer); autoCollectTimer = null; $('autoCollectBtn').textContent = 'Auto-collector: OFF'; }
   toast('Disconnected');
 }
 window.ethereum?.on?.('accountsChanged', accs => { accs.length ? connect() : disconnect(); });
@@ -886,7 +889,7 @@ window.ethereum?.on?.('accountsChanged', accs => { accs.length ? connect() : dis
 window.ethereum?.on?.('chainChanged', () => {
   if(!userAddress) return;
   provider = null; signer = null;
-  if(autoCollectTimer){ clearInterval(autoCollectTimer); autoCollectTimer = null; $('autoCollectBtn').textContent = '🤖 Auto-collector: OFF'; }
+  if(autoCollectTimer){ clearInterval(autoCollectTimer); autoCollectTimer = null; $('autoCollectBtn').textContent = 'Auto-collector: OFF'; }
   toast('Network changed — reconnecting…');
   connect();
 });
@@ -1565,10 +1568,10 @@ async function collectDue(){
 function toggleAutoCollect(){
   if (autoCollectTimer){
     clearInterval(autoCollectTimer); autoCollectTimer = null;
-    $('autoCollectBtn').textContent = '🤖 Auto-collector: OFF';
+    $('autoCollectBtn').textContent = 'Auto-collector: OFF';
     toast('Auto-collector stopped');
   } else {
-    $('autoCollectBtn').textContent = '🤖 Auto-collector: ON';
+    $('autoCollectBtn').textContent = 'Auto-collector: ON';
     toast('Auto-collector running — checks every 60s');
     autoCollectTimer = setInterval(async ()=>{
       if (!signer || !ARCSUB || !booted) return;
@@ -1580,7 +1583,7 @@ function toggleAutoCollect(){
           const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
           const tx = await c.chargeMany(due);
           await tx.wait();
-          toast(`🤖 Auto-collected ${due.length} payment(s)`);
+          toast(`Auto-collected ${due.length} payment(s)`);
           loadSubs();
         }
       }catch{}
