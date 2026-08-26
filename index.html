@@ -1578,18 +1578,37 @@ async function cancelSub(id){
   }catch(e){ toast('Cancel failed: '+(e.shortMessage||e.message||'').slice(0,60)); }
 }
 
+/* Read the schedules back and count how many actually advanced. This is the
+   only honest way to report a chargeMany: the contract catches each failing
+   charge and moves on, so the transaction succeeds either way. */
+async function settledCount(ids, before){
+  const after = await fetchSubs(ids);
+  return after.filter(s => Number(s.nextChargeAt) > (before.get(s.id) ?? 0)).length;
+}
+
 async function collectDue(){
   if(!await requireSigner('merchStatus')) return;
   await loadSubs();
-  const due = merchSubsCache.filter(subDue).map(s=>s.id);
+  const dueSubs = merchSubsCache.filter(subDue);
+  const due = dueSubs.map(s => s.id);
   if (!due.length){ setStatus('merchStatus','Nothing due right now.'); return; }
+  const before = new Map(dueSubs.map(s => [s.id, Number(s.nextChargeAt)]));
   try{
-    setStatus('merchStatus',`Collecting ${due.length} due payment(s)…`);
+    setStatus('merchStatus',`<span class="spin"></span>Collecting ${due.length} due payment(s)…`);
     const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
-    const tx = await c.chargeMany(due);
-    const rc = await tx.wait();
-    setStatus('merchStatus',`✓ Collected ${due.length} payment(s) · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
-    toast('✓ All due payments collected');
+    const rc = await (await c.chargeMany(due)).wait();
+    const paid = await settledCount(due, before);
+    const missed = due.length - paid;
+    const link = `<a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`;
+    if(paid === due.length){
+      setStatus('merchStatus', `✓ Collected all ${paid} payment(s) · ${link}`, 'ok');
+      toast(`✓ Collected ${paid} payment(s)`);
+    } else {
+      setStatus('merchStatus',
+        `Collected ${paid} of ${due.length} · ${missed} could not be charged — the subscriber revoked their USDC approval or is out of balance · ${link}`,
+        paid ? '' : 'err');
+      toast(`Collected ${paid} of ${due.length}`);
+    }
     loadSubs();
   }catch(e){ setStatus('merchStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
 }
@@ -1750,30 +1769,17 @@ async function kpTick(){
         // v.label is a stranger's string — kpLog writes it as text, never markup.
         kpLog(`🔁 Subscription #${id} ("${v.label}") is due — collecting ${ethers.formatUnits(v.amount,6)} USDC for ${short(v.merchant)}…`);
       }
+      const before = new Map(slice.map(([id, v]) => [id, v.nextChargeAt]));
       try{
         const tx = ids.length === 1 ? await c.charge(ids[0]) : await c.chargeMany(ids);
         await tx.wait();
-        kpLog(`✓ ${ids.length} subscription(s) charged autonomously — merchants paid, next cycles scheduled.`,'ok');
       }catch(e){
         const msg = (e.shortMessage || e.message || '');
-        const broke = msg.toLowerCase().includes('insufficient');
-        kpLog(`batch [${ids.join(', ')}] failed: ` + msg.slice(0,80) + (broke ? ' — fund my gas!' : ''), 'err');
-        // One uncollectable subscriber (no allowance, empty wallet) reverts the
-        // whole chargeMany. Fall back to charging one at a time so the rest of
-        // the batch still gets paid.
-        if(!broke && ids.length > 1){
-          kpLog('↩ retrying the batch one subscription at a time…','warn');
-          for(const id of ids){
-            try{
-              await (await c.charge(id)).wait();
-              kpLog(`✓ #${id} charged.`,'ok');
-            }catch(e2){
-              kpLog(`#${id} skipped: ` + (e2.shortMessage||e2.message||'').slice(0,70),'err');
-            }
-          }
-        }
+        kpLog(`batch [${ids.join(', ')}] reverted: ` + msg.slice(0,80) +
+              (msg.toLowerCase().includes('insufficient') ? ' — fund my gas!' : ''), 'err');
       }
-      // Re-read what we just touched so a failed charge is not retried blindly.
+      // Re-read what we touched. chargeMany catches each failing charge, so the
+      // schedules are the only truth about who actually paid.
       await inBatches(ids, 10, async id => {
         try{
           const sd = await c.getSub(id);
@@ -1781,6 +1787,11 @@ async function kpTick(){
             amount: sd.amount, merchant: sd.merchant, label: sd.label });
         }catch{ kpSubs.delete(id); }
       });
+      const paid = ids.filter(id => (kpSubs.get(id)?.nextChargeAt ?? 0) > before.get(id));
+      if(paid.length) kpLog(`✓ ${paid.length} subscription(s) charged autonomously — merchants paid, next cycles scheduled.`,'ok');
+      for(const id of ids){
+        if(!paid.includes(id)) kpLog(`#${id} not charged — the subscriber revoked their USDC approval or is out of balance.`,'warn');
+      }
     }
   }catch(e){ kpLog('tick error: ' + (e.shortMessage||e.message||'').slice(0,80),'err'); }
   finally{ kpBusy = false; kpBal(); }

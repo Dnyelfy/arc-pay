@@ -93,9 +93,10 @@ The test suite serves the vendored bytes in place of the CDN, so a stale
 
 ## Contracts
 
-`contracts/ArcPayV2.sol` is the payments contract deployed at the `pay` address
-in the network profile. The subscriptions and treasury contracts are deployed
-on-chain but their sources are not in this repository yet.
+`contracts/ArcPayV2.sol` and `contracts/ArcSub.sol` are the payments and
+subscription contracts, deployed at the `pay` and `subs` addresses in the
+network profile. The treasury contract is deployed on-chain but its source is
+not in this repository yet.
 
 ### Review notes on ArcPayV2
 
@@ -125,6 +126,41 @@ required before any mainnet profile is filled in.
 - `sentBy()` / `receivedBy()` return unbounded arrays. Fine today; for a very
   active address these view calls will eventually outgrow a node's response
   limits, and a paginated variant would age better.
+
+### Review notes on ArcSub
+
+**Sound**
+
+- Allowance-pull, never custody: the contract holds no funds at any point, so
+  there is nothing in it to drain.
+- `charge()` advances `nextCharge` *before* calling `transferFrom`, so a
+  re-entering token cannot double-charge — the `block.timestamp >= nextCharge`
+  guard is already false. The token address is `immutable`, so it cannot be
+  swapped for a malicious one.
+- Missed periods do not pile up into a debt: if several intervals elapsed,
+  the next charge is scheduled one interval from now, not from the backlog.
+- Only `msg.sender` can subscribe themselves, so an open USDC approval to this
+  contract can only ever be pulled by subscriptions the approver created.
+  Unlimited approval is bounded in practice by that.
+- The amount is fixed at creation with no setter, so a merchant cannot raise
+  the price on an existing subscriber. Either party can cancel.
+
+**Worth changing**
+
+- `chargeMany()` deliberately swallows every failure
+  (`try this.charge(ids[i]) {} catch {}`). That is the right behaviour — one
+  subscriber with a revoked approval must not block the batch — but it means a
+  *mined transaction proves nothing about whether anyone was charged*, and
+  nothing on-chain reports which ones were skipped. An event per skipped id, or
+  a returned count, would let a caller tell success from silence.
+- `transferFrom` is called through a plain `IERC20` and its `bool` is checked.
+  Circle's USDC returns one, so this is correct here; a `SafeERC20`-style
+  wrapper would survive a token that returns nothing.
+- `listBySubscriber()` / `listByMerchant()` return unbounded arrays, same
+  ageing problem as ArcPayV2's indexes.
+- `label` is arbitrary caller-controlled text, and the contract cannot
+  sanitise it. Any frontend must escape it — this is exactly the stored-XSS
+  path that was fixed in the agent terminal.
 
 **Used by the frontend**
 
