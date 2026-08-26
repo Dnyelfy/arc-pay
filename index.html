@@ -95,6 +95,7 @@ footer a:hover{color:var(--accent);}
   <div class="wrap">
     <div class="logo">Pay <em>on Arc</em></div>
     <div class="hright">
+      <span class="pill" id="netPill">—</span>
       <span class="pill gas" id="gasPill">⛽ — gwei</span>
       <span class="pill" id="balPill" style="display:none;"></span>
       <button class="connect-btn primary" id="connBtn" onclick="connect()">Connect wallet</button>
@@ -129,11 +130,11 @@ footer a:hover{color:var(--accent);}
     </div>
     <div class="card">
       <h2>Send a payment</h2>
-      <label>Recipient address</label>
+      <label for="payTo">Recipient address</label>
       <input id="payTo" placeholder="0x…" spellcheck="false"/>
-      <label>Amount (USDC)</label>
+      <label for="payAmt">Amount (USDC)</label>
       <input id="payAmt" placeholder="1.50" inputmode="decimal"/>
-      <label>Note — written on-chain with the payment</label>
+      <label for="payNote">Note — written on-chain with the payment</label>
       <input id="payNote" placeholder="coffee ☕ / invoice #42 / gm" maxlength="120"/>
       <div class="row">
         <button class="connect-btn primary" onclick="sendPay()">Send payment</button>
@@ -148,11 +149,11 @@ footer a:hover{color:var(--accent);}
   <div class="section" id="sec-split">
     <div class="card">
       <h2>Split a payment</h2>
-      <label>Recipients — one address per line (max 20)</label>
+      <label for="splitTo">Recipients — one address per line (max 20)</label>
       <textarea id="splitTo" placeholder="0xabc…&#10;0xdef…&#10;0x123…" spellcheck="false"></textarea>
-      <label>Total amount to split (USDC)</label>
+      <label for="splitAmt">Total amount to split (USDC)</label>
       <input id="splitAmt" placeholder="10.00" inputmode="decimal"/>
-      <label>Note</label>
+      <label for="splitNote">Note</label>
       <input id="splitNote" placeholder="team payout / dinner split" maxlength="120"/>
       <div class="cost" id="splitPreview"></div>
       <div class="row"><button class="connect-btn primary" onclick="sendSplit()">Split & send</button></div>
@@ -166,18 +167,18 @@ footer a:hover{color:var(--accent);}
     <div class="card">
       <h2>Send a recallable payment</h2>
       <p class="hint" style="margin:0 0 4px;">Inspired by Miden's P2IDR notes: the recipient can claim any time, but if they don't, you can pull the funds back after the window closes. No more "wrong address" panic.</p>
-      <label>Recipient address</label>
+      <label for="rcTo">Recipient address</label>
       <input id="rcTo" placeholder="0x…" spellcheck="false"/>
-      <label>Amount (USDC)</label>
+      <label for="rcAmt">Amount (USDC)</label>
       <input id="rcAmt" placeholder="1.00" inputmode="decimal"/>
-      <label>Recall window — you can take it back after</label>
-      <div class="row" style="margin-top:4px;">
+      <label id="rcWindowLabel">Recall window — you can take it back after</label>
+      <div class="row" style="margin-top:4px;" role="group" aria-labelledby="rcWindowLabel">
         <button class="preset" data-s="300" onclick="pickWindow(this)">5 min</button>
         <button class="preset active" data-s="3600" onclick="pickWindow(this)">1 hour</button>
         <button class="preset" data-s="86400" onclick="pickWindow(this)">24 hours</button>
         <button class="preset" data-s="604800" onclick="pickWindow(this)">7 days</button>
       </div>
-      <label>Note</label>
+      <label for="rcNote">Note</label>
       <input id="rcNote" placeholder="claim me before I change my mind ⏳" maxlength="120"/>
       <div class="row"><button class="connect-btn primary" onclick="sendRecallable()">Send recallable</button></div>
       <div class="status" id="rcStatus"></div>
@@ -195,14 +196,14 @@ footer a:hover{color:var(--accent);}
       <h2>🌉 Send a message across chains</h2>
       <p class="hint" style="margin:0 0 8px;">Powered by Chainlink CCIP. Your message leaves Arc Testnet and is delivered to Ethereum Sepolia — one of the few live cross-chain lanes on Arc. The fee is paid in USDC, like everything else here.</p>
       <div class="lane">
-        <span class="chip arc">Arc Testnet</span>
+        <span class="chip arc" id="ccLaneSrc">—</span>
         <span class="arrow">→</span>
-        <span class="chip">Ethereum Sepolia</span>
+        <span class="chip" id="ccLane">—</span>
         <span style="color:var(--dim);">· via Chainlink CCIP</span>
       </div>
-      <label>Destination — your receiver contract on Sepolia</label>
-      <input id="ccReceiver" value="0x8D77a145a238Aa36f2b20027b353cF1E981B569F" spellcheck="false"/>
-      <label>Message — travels cross-chain with your transaction</label>
+      <label for="ccReceiver">Destination — your receiver contract on the far chain</label>
+      <input id="ccReceiver" value="" spellcheck="false"/>
+      <label for="ccMsg">Message — travels cross-chain with your transaction</label>
       <input id="ccMsg" placeholder="gm from Arc 👋" maxlength="120"/>
       <div class="cost" id="ccFee">Fee: <span style="color:var(--muted)">—</span> <button class="connect-btn" style="padding:6px 12px;font-size:12px;margin-left:6px;" onclick="estimateCcipFee()">Estimate fee</button></div>
       <div class="row"><button class="connect-btn primary" onclick="sendCcip()">Send cross-chain →</button></div>
@@ -210,8 +211,8 @@ footer a:hover{color:var(--accent);}
       <div class="hint">Delivery to Sepolia takes a few minutes while Chainlink's network finalizes it. Your message lands in the receiver contract, gets stored, and emits an event.</div>
     </div>
     <div class="card">
-      <h2>📨 Messages on Ethereum Sepolia</h2>
-      <p class="hint" style="margin:0 0 4px;">Read straight from your receiver contract <a href="https://sepolia.etherscan.io/address/0x8D77a145a238Aa36f2b20027b353cF1E981B569F" target="_blank" rel="noreferrer" style="color:var(--accent)">0x8D77…569F ↗</a> — every message that crossed from Arc and actually landed here.</p>
+      <h2>📨 Messages on <span id="ccDestName">—</span></h2>
+      <p class="hint" style="margin:0 0 4px;">Read straight from your receiver contract <a id="ccReceiverLink" href="#" target="_blank" rel="noreferrer" style="color:var(--accent)">—</a> — every message that crossed from Arc and actually landed here.</p>
       <div class="row" style="margin-top:8px;"><button class="connect-btn" onclick="loadSepoliaMessages()">↻ Load messages on Sepolia</button></div>
       <div id="ccInbox"><p class="empty">Send a cross-chain message, wait a few minutes, then load — this proves it arrived and ran code on the other chain.</p></div>
     </div>
@@ -224,7 +225,7 @@ footer a:hover{color:var(--accent);}
         → The contract stores the message and emits an event<br/>
         → One transaction, two chains, real app-to-app messaging
       </div>
-      <div class="hint" style="margin-top:12px;">Arc Router <span style="color:var(--muted)">0xdE4E…eab8</span> · Sepolia receiver <span style="color:var(--muted)">0x8D77…569F</span> · fee paid in USDC.</div>
+      <div class="hint" style="margin-top:12px;">Arc Router <span style="color:var(--muted)" id="ccRouterAddr">—</span> · receiver <span style="color:var(--muted)" id="ccReceiverAddr">—</span> · fee paid in USDC.</div>
     </div>
   </div>
 
@@ -239,7 +240,7 @@ footer a:hover{color:var(--accent);}
       </div>
       <div class="row" style="align-items:flex-end;">
         <div style="flex:1;min-width:140px;">
-          <label>Fund gas (USDC)</label>
+          <label for="kpFundAmt">Fund gas (USDC)</label>
           <input id="kpFundAmt" placeholder="1.00" inputmode="decimal"/>
         </div>
         <button class="connect-btn" onclick="kpFund()">⛽ Fund gas</button>
@@ -268,18 +269,18 @@ footer a:hover{color:var(--accent);}
   <div class="section" id="sec-subs">
     <div class="card">
       <h2>🔁 Start a subscription</h2>
-      <label>Merchant / recipient address — who gets paid</label>
+      <label for="subTo">Merchant / recipient address — who gets paid</label>
       <input id="subTo" placeholder="0x…" spellcheck="false"/>
-      <label>Amount per period (USDC)</label>
+      <label for="subAmt">Amount per period (USDC)</label>
       <input id="subAmt" placeholder="10.00" inputmode="decimal"/>
-      <label>Billing period</label>
-      <div class="row" id="subIntervalRow">
+      <label id="subIntervalLabel">Billing period</label>
+      <div class="row" id="subIntervalRow" role="group" aria-labelledby="subIntervalLabel">
         <button class="connect-btn" data-sec="300" onclick="pickInterval(this)">5 min (test)</button>
         <button class="connect-btn" data-sec="86400" onclick="pickInterval(this)">Daily</button>
         <button class="connect-btn" data-sec="604800" onclick="pickInterval(this)">Weekly</button>
         <button class="connect-btn primary" data-sec="2592000" onclick="pickInterval(this)">Monthly</button>
       </div>
-      <label>Label — shows in both parties' lists</label>
+      <label for="subLabel">Label — shows in both parties' lists</label>
       <input id="subLabel" placeholder="Pro plan / kira / DAO aidatı" maxlength="64"/>
       <div class="row">
         <button class="connect-btn primary" onclick="createSub()">Subscribe — first period charged now</button>
@@ -349,7 +350,7 @@ footer a:hover{color:var(--accent);}
       <div class="hint" style="margin-bottom:14px;">A ratio needs both sides, so seed the treasury with USDC and EURC. Then anyone can be the <b>keeper</b>: supply the short side, receive the other plus a small bonus — that incentive is what makes the agent run without a babysitter.</div>
       <div class="row" style="align-items:flex-end;margin-top:0;">
         <div style="flex:1;min-width:150px;">
-          <label>Deposit amount</label>
+          <label for="tDepAmt">Deposit amount</label>
           <input id="tDepAmt" placeholder="50.00" inputmode="decimal"/>
         </div>
         <button class="connect-btn" onclick="treasuryDeposit('usdc')">↓ Fund USDC</button>
@@ -360,7 +361,7 @@ footer a:hover{color:var(--accent);}
         <button class="connect-btn" onclick="treasuryScan()">↻ Refresh health</button>
       </div>
       <div class="status" id="tStatus"></div>
-      <div class="hint" style="margin-top:12px;">Rebalance pulls a fresh Pyth update on-chain (tiny USDC gas fee), refuses if confidence is too wide, and only moves funds when drift breaks the band. Agent <a href="https://testnet.arcscan.app/address/0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53" target="_blank" rel="noreferrer" style="color:var(--accent)">0xC99f…3eA53 ↗</a> · Pyth <span style="color:var(--muted)">0x2880…7B43</span>.</div>
+      <div class="hint" style="margin-top:12px;">Rebalance pulls a fresh Pyth update on-chain (tiny USDC gas fee), refuses if confidence is too wide, and only moves funds when drift breaks the band. Agent <a id="tAgentLink" href="#" target="_blank" rel="noreferrer" style="color:var(--accent)">—</a> · Pyth <span style="color:var(--muted)" id="tPythAddr">—</span>.</div>
     </div>
   </div>
 
@@ -368,19 +369,107 @@ footer a:hover{color:var(--accent);}
 
 <footer>
   <div class="wrap">
-    Built by <a href="https://x.com/Dnyelfy" target="_blank" rel="noreferrer">@Dnyelfy</a> · contract <a id="cLink" href="#" target="_blank" rel="noreferrer">Pay on Arc</a> · Arc Testnet<br/>
+    Built by <a href="https://x.com/Dnyelfy" target="_blank" rel="noreferrer">@Dnyelfy</a> · contract <a id="cLink" href="#" target="_blank" rel="noreferrer">Pay on Arc</a> · <span id="footNet">—</span><br/>
     More Arc tools → <a href="https://arc-wallet-check.vercel.app" target="_blank" rel="noreferrer">Wallet Check</a> · <a href="https://arcvote-one.vercel.app/arc-dapp.html" target="_blank" rel="noreferrer">Quest Hub</a> · <a href="https://arc-agent-forge.vercel.app" target="_blank" rel="noreferrer">Agent Forge</a>
   </div>
 </footer>
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<!-- ethers loader: CDN pinned with Subresource Integrity, same-origin vendored copy as fallback.
+     A payments UI must never execute an unverified crypto library, and must never fail silently. -->
 <script>
-const ARCPAY = '0x418E2c81b0E90C98780494c62C73452657CA979b'; // Pay on Arc payment contract (V2)
-const RPC = 'https://rpc.testnet.arc.network';
-const CHAIN_ID = 5042002;
-const SCAN = 'https://testnet.arcscan.app';
+window.__ethersReady = new Promise(function(resolve, reject){
+  window.__ethersOk = function(){ resolve(); };
+  window.__ethersFail = function(){
+    var s = document.createElement('script');
+    s.src = 'vendor/ethers-6.13.2.umd.min.js';
+    s.onload = function(){ resolve(); };
+    s.onerror = function(){ reject(new Error('ethers could not be loaded from CDN or vendor/')); };
+    document.head.appendChild(s);
+  };
+});
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"
+        integrity="sha384-gpR0Q6Hx/O+uevlbpbANbS0LWjbejPV1sqD/8w422l/fW8whGY0EPmKw3uG7ACYP"
+        crossorigin="anonymous"
+        onload="__ethersOk()" onerror="__ethersFail()"></script>
+<script>
+/* ============================================================================
+   NETWORK CONFIG — the single place to switch between Arc Testnet and mainnet.
+   Flip ACTIVE_NETWORK and fill in the mainnet contract addresses; nothing else
+   in this file hardcodes a chain, an RPC, an explorer or a contract address.
+   ========================================================================= */
+const NETWORKS = {
+  'arc-testnet': {
+    label: 'Arc Testnet',
+    testnet: true,
+    chainId: 5042002,
+    rpc: 'https://rpc.testnet.arc.network',
+    scan: 'https://testnet.arcscan.app',
+    native: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+    contracts: {
+      pay:        '0x418E2c81b0E90C98780494c62C73452657CA979b', // Pay on Arc payments (V2)
+      subs:       '0x015f65293c936741588dC03ebDD1A193D62535eC', // Subscriptions
+      treasury:   '0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53', // Treasury agent
+      usdc:       '0x3600000000000000000000000000000000000000', // USDC (ERC-20 view of native)
+      eurc:       '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a',
+      ccipRouter: '0xdE4E7FED43FAC37EB21aA0643d9852f75332eab8',
+      pyth:       '0x2880aB155794e7179c9eE2e38200202908C17B43'
+    },
+    ccip: {
+      destSelector: '16015286601757825753',   // Ethereum Sepolia CCIP chain selector
+      destName: 'Ethereum Sepolia',
+      receiver: '0x8D77a145a238Aa36f2b20027b353cF1E981B569F',
+      destRpc:  'https://ethereum-sepolia-rpc.publicnode.com',
+      destScan: 'https://sepolia.etherscan.io'
+    },
+    pythEurUsdId: '0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b'
+  },
+
+  /* Mainnet profile. Every '' below is a deliberate blank: the app refuses to
+     start on a network whose contracts are not filled in, so a half-configured
+     mainnet build cannot quietly send real money to the zero address. */
+  'arc-mainnet': {
+    label: 'Arc',
+    testnet: false,
+    chainId: 0,
+    rpc: '',
+    scan: '',
+    native: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+    contracts: { pay:'', subs:'', treasury:'', usdc:'', eurc:'', ccipRouter:'', pyth:'' },
+    ccip: { destSelector:'', destName:'Ethereum', receiver:'', destRpc:'', destScan:'' },
+    pythEurUsdId: '0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b'
+  }
+};
+
+// ── Switch networks here ──────────────────────────────────────────────────
+const ACTIVE_NETWORK = 'arc-testnet';
+// ──────────────────────────────────────────────────────────────────────────
+
+const NET = NETWORKS[ACTIVE_NETWORK];
+const IS_TESTNET = NET.testnet;
+
+/* Config sanity check — surfaces a misconfigured build instead of letting it
+   run against address(0). Returns a list of missing keys. */
+function configProblems(){
+  const missing = [];
+  if(!NET.rpc) missing.push('rpc');
+  if(!NET.scan) missing.push('scan');
+  if(!NET.chainId) missing.push('chainId');
+  for(const k of ['pay','subs','treasury','usdc','eurc','ccipRouter','pyth']){
+    if(!NET.contracts[k]) missing.push('contracts.' + k);
+  }
+  for(const k of ['destSelector','receiver','destRpc','destScan']){
+    if(!NET.ccip[k]) missing.push('ccip.' + k);
+  }
+  return missing;
+}
+
+const ARCPAY = NET.contracts.pay;
+const RPC = NET.rpc;
+const CHAIN_ID = NET.chainId;
+const SCAN = NET.scan;
 const ABI = [
   'function pay(address to, string note) payable',
   'function splitPay(address[] to, string note) payable',
@@ -396,10 +485,62 @@ const ABI = [
 const $ = id => document.getElementById(id);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '';
 let provider = null, signer = null, userAddress = null;
-const readProvider = new ethers.JsonRpcProvider(RPC);
-const iface = new ethers.Interface(ABI);
+// Built in boot(), once the ethers library has actually loaded.
+let readProvider = null, iface = null, sepoliaProvider = null;
+let booted = false;
 
-document.getElementById('cLink').href = `${SCAN}/address/${ARCPAY}`;
+/* Amount parsing — one place, used by every form.
+   Accepts "1,50" as well as "1.50" (a comma decimal used to silently parse as
+   1 and send the wrong amount) and rejects anything that is not > 0. */
+function parseAmount(raw){
+  const t = String(raw ?? '').trim().replace(/\s/g,'').replace(',','.');
+  if(!/^\d*\.?\d+$/.test(t)) return null;
+  const n = Number(t);
+  if(!isFinite(n) || n <= 0) return null;
+  return t;                       // normalized decimal string, safe for parseUnits
+}
+/* Amounts are sent to 6-decimal token contracts; more precision than that is
+   truncated on-chain, so refuse it here instead of surprising the user. */
+function toUnits6(t){ return ethers.parseUnits(Number(t).toFixed(6), 6); }
+/* Native gas token (USDC on Arc). Decimals come from the network profile so a
+   mainnet with a different native precision needs no code change. */
+function parseNative(t){ return ethers.parseUnits(String(t), NET.native.decimals); }
+function formatNative(v){ return ethers.formatUnits(v, NET.native.decimals); }
+
+function fatal(msg){
+  document.body.insertAdjacentHTML('afterbegin',
+    `<div style="background:var(--red-bg);border-bottom:1px solid var(--red);color:var(--red);
+      font-family:var(--mono);font-size:13px;padding:14px 18px;text-align:center;position:relative;z-index:200;">${escHtml(msg)}</div>`);
+}
+
+/* Every network read gets a deadline. Without this an unresponsive explorer or
+   oracle leaves the UI stuck on "Reading…" with no way out. */
+async function fetchJson(url, ms = 12000){
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try{
+    const r = await fetch(url, { signal: ctl.signal });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+/* Run an async mapper over a list with bounded concurrency — keeps a few
+   hundred contract reads off a single serial chain without flooding the RPC. */
+async function inBatches(items, size, fn){
+  const out = [];
+  for(let i = 0; i < items.length; i += size){
+    out.push(...await Promise.all(items.slice(i, i + size).map(fn)));
+  }
+  return out;
+}
+
+function requireReady(statusId){
+  if(booted) return true;
+  const m = 'Still loading — one moment.';
+  statusId ? setStatus(statusId, m, 'err') : toast(m);
+  return false;
+}
 
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200); }
 function setStatus(id,msg,cls){ const s=$(id); s.innerHTML=msg||''; s.className='status'+(cls?' '+cls:''); }
@@ -411,35 +552,92 @@ function go(name, btn){
   if(btn) btn.classList.add('active');
 }
 
+/* Ask the wallet to sit on the configured chain, adding it if unknown.
+   Throws if it ends up anywhere else — callers must not send a transaction
+   after that. This is the guard that stops funds going out on the wrong
+   network when the user switches chains after connecting. */
+const wrongNetworkError = why =>
+  new Error(`Wrong network — switch your wallet to ${NET.label} (chain ${CHAIN_ID}).` + (why ? ` (${why})` : ''));
+
+/* Ask the wallet itself, not a cached provider. A provider built on the old
+   chain throws its own "network changed: X => Y" — accurate but meaningless to
+   the person holding the funds, and it fires before we can say anything useful. */
+async function walletChainId(){
+  return Number(await window.ethereum.request({ method:'eth_chainId' }));
+}
+
+async function rebindSigner(){
+  provider = new ethers.BrowserProvider(window.ethereum);
+  signer = await provider.getSigner();
+  userAddress = await signer.getAddress();
+}
+
+async function ensureChain(){
+  if(!window.ethereum) throw new Error('No wallet found');
+  const want = '0x' + CHAIN_ID.toString(16);
+
+  if(await walletChainId() !== CHAIN_ID){
+    try{
+      await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: want }] });
+    }catch(e){
+      if(e.code === 4902){
+        await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{
+          chainId: want, chainName: NET.label,
+          nativeCurrency: NET.native,
+          rpcUrls:[RPC], blockExplorerUrls:[SCAN]
+        }]});
+      } else {
+        throw wrongNetworkError(e.code === 4001 ? 'request rejected' : (e.shortMessage || e.message || ''));
+      }
+    }
+    if(await walletChainId() !== CHAIN_ID) throw wrongNetworkError();
+    await rebindSigner();
+    return;
+  }
+
+  // Right chain, but the cached provider may have been built on another one.
+  if(provider){
+    let stale = false;
+    try{ stale = Number((await provider.getNetwork()).chainId) !== CHAIN_ID; }
+    catch{ stale = true; }
+    if(stale) await rebindSigner();
+  }
+}
+
+/* Every write path calls this instead of using `signer` directly, so a chain
+   switch between connecting and clicking Send can never slip through. */
+async function requireSigner(statusId){
+  if(!requireReady(statusId)) return null;
+  if(!signer){ await connect(); if(!signer) return null; }
+  try{
+    await ensureChain();
+    return signer;
+  }catch(e){
+    const m = e.shortMessage || e.message || 'Wrong network';
+    statusId ? setStatus(statusId, m, 'err') : toast(m);
+    return null;
+  }
+}
+
 async function connect(){
-  if(!window.ethereum){ toast('MetaMask not found'); return; }
+  if(!requireReady()) return;
+  if(!window.ethereum){ toast('No wallet found — install MetaMask'); return; }
+  const btn = $('connBtn');
+  btn.disabled = true;
   try{
     provider = new ethers.BrowserProvider(window.ethereum);
-    const net = await provider.getNetwork();
-    if(Number(net.chainId) !== CHAIN_ID){
-      try{
-        await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x'+CHAIN_ID.toString(16) }] });
-      }catch(e){
-        if(e.code === 4902){
-          await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{
-            chainId:'0x'+CHAIN_ID.toString(16), chainName:'Arc Testnet',
-            nativeCurrency:{ name:'USDC', symbol:'USDC', decimals:18 },
-            rpcUrls:[RPC], blockExplorerUrls:[SCAN]
-          }]});
-        } else throw e;
-      }
-      provider = new ethers.BrowserProvider(window.ethereum);
-    }
+    await ensureChain();
     signer = await provider.getSigner();
     userAddress = await signer.getAddress();
     $('connBtn').textContent = short(userAddress) + ' ✕';
     $('connBtn').onclick = disconnect;
     $('connBtn').title = 'Disconnect';
     const bal = await provider.getBalance(userAddress);
-    $('balPill').textContent = Number(ethers.formatEther(bal)).toFixed(2) + ' USDC';
+    $('balPill').textContent = Number(formatNative(bal)).toFixed(2) + ' ' + NET.native.symbol;
     $('balPill').style.display = '';
     toast('✓ Connected');
-  }catch(e){ toast('Connect failed: ' + (e.shortMessage||e.message||'').slice(0,60)); }
+  }catch(e){ toast('Connect failed: ' + (e.shortMessage||e.message||'').slice(0,80)); }
+  finally{ btn.disabled = false; }
 }
 
 async function disconnect(){
@@ -451,38 +649,57 @@ async function disconnect(){
   $('balPill').style.display = 'none';
   $('histList').innerHTML = '<p class="empty">Connect your wallet and load — every Pay on Arc payment you sent or received, straight from the chain.</p>';
   $('rcList').innerHTML = '<p class="empty">Connect & load — outgoing payments show a recall countdown, incoming ones a claim button.</p>';
+  $('mySubsList').innerHTML = '<p class="empty">Connect & load to see subscriptions you\'re paying.</p>';
+  $('myMerchList').innerHTML = '<p class="empty">Nobody subscribed to you yet. Share your address with a label 😎</p>';
   rcItems = [];
+  merchSubsCache = [];
+  // Anything that signs on a timer must stop the moment the wallet goes away.
+  if(autoCollectTimer){ clearInterval(autoCollectTimer); autoCollectTimer = null; $('autoCollectBtn').textContent = '🤖 Auto-collector: OFF'; }
   toast('Disconnected');
 }
 window.ethereum?.on?.('accountsChanged', accs => { accs.length ? connect() : disconnect(); });
+// A chain switch invalidates the cached provider/signer; rebind or drop them.
+window.ethereum?.on?.('chainChanged', () => {
+  if(!userAddress) return;
+  provider = null; signer = null;
+  if(autoCollectTimer){ clearInterval(autoCollectTimer); autoCollectTimer = null; $('autoCollectBtn').textContent = '🤖 Auto-collector: OFF'; }
+  toast('Network changed — reconnecting…');
+  connect();
+});
+// Leave no signing loop running behind a closed tab.
+window.addEventListener('pagehide', () => {
+  if(autoCollectTimer) clearInterval(autoCollectTimer);
+  if(kpTimer) clearInterval(kpTimer);
+  if(pythTimer) clearInterval(pythTimer);
+});
 
 function validAddr(a){ try{ return ethers.getAddress(a.trim()); }catch{ return null; } }
 
 async function sendPay(toOverride, amtOverride, noteOverride, statusId){
   const sid = statusId || 'payStatus';
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner(sid)) return;
   const to = validAddr(toOverride ?? $('payTo').value);
-  const amt = (amtOverride ?? $('payAmt').value).toString().trim().replace(',','.');
+  const amt = parseAmount(amtOverride ?? $('payAmt').value);
   const note = (noteOverride ?? $('payNote').value).trim();
   if(!to){ setStatus(sid,'Enter a valid recipient address.','err'); return; }
-  if(!(parseFloat(amt) > 0)){ setStatus(sid,'Enter an amount above zero.','err'); return; }
+  if(!amt){ setStatus(sid,'Enter an amount above zero.','err'); return; }
   try{
     setStatus(sid,'Waiting for wallet confirmation…');
     const c = new ethers.Contract(ARCPAY, ABI, signer);
-    const tx = await c.pay(to, note, { value: ethers.parseEther(amt) });
+    const tx = await c.pay(to, note, { value: parseNative(amt) });
     setStatus(sid,'⏳ Sending… ' + short(tx.hash));
     const rc = await tx.wait();
-    setStatus(sid,`✅ Paid ${amt} USDC to ${short(to)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view receipt ↗</a>`,'ok');
+    setStatus(sid,`✅ Paid ${escHtml(amt)} ${NET.native.symbol} to ${short(to)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view receipt ↗</a>`,'ok');
     toast('✓ Payment sent');
   }catch(e){ setStatus(sid,'Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
 }
 
 function makeLink(){
   const to = validAddr($('payTo').value);
-  const amt = $('payAmt').value.trim().replace(',','.');
+  const amt = parseAmount($('payAmt').value);
   const note = $('payNote').value.trim();
   if(!to){ setStatus('payStatus','Pay-link needs a valid recipient address.','err'); return; }
-  if(!(parseFloat(amt) > 0)){ setStatus('payStatus','Pay-link needs an amount.','err'); return; }
+  if(!amt){ setStatus('payStatus','Pay-link needs an amount above zero.','err'); return; }
   const u = new URL(location.origin + location.pathname);
   u.searchParams.set('to', to);
   u.searchParams.set('amt', amt);
@@ -496,67 +713,65 @@ let incoming = null;
 function checkIncoming(){
   const p = new URLSearchParams(location.search);
   const to = p.get('to') ? validAddr(p.get('to')) : null;
-  const amt = p.get('amt');
-  if(!to || !(parseFloat(amt) > 0)) return;
-  incoming = { to, amt: parseFloat(amt).toString(), note: (p.get('note')||'').slice(0,120) };
+  const amt = parseAmount(p.get('amt'));
+  if(!to || !amt) return;
+  incoming = { to, amt, note: (p.get('note')||'').slice(0,120) };
   $('incomingReceipt').innerHTML = `
     <div class="r-foot">payment request</div>
-    <div class="r-amt">${incoming.amt} USDC</div>
+    <div class="r-amt">${escHtml(incoming.amt)} ${escHtml(NET.native.symbol)}</div>
     <div class="r-sep"></div>
     <div class="r-line"><span>to</span><b>${incoming.to}</b></div>
     ${incoming.note ? `<div class="r-line"><span>note</span><b>${escHtml(incoming.note)}</b></div>` : ''}
-    <div class="r-line"><span>network</span><b>Arc Testnet · gas in USDC</b></div>`;
+    <div class="r-line"><span>network</span><b>${escHtml(NET.label)} · gas in ${escHtml(NET.native.symbol)}</b></div>`;
   $('incomingCard').style.display = '';
 }
 function payIncoming(){ if(incoming) sendPay(incoming.to, incoming.amt, incoming.note, 'incomingStatus'); }
-function escHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function previewSplit(){
   const lines = $('splitTo').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  const amt = parseFloat($('splitAmt').value.replace(',','.'));
+  const amt = Number(parseAmount($('splitAmt').value));
   if(!lines.length || !(amt > 0)){ $('splitPreview').textContent=''; return; }
-  $('splitPreview').innerHTML = `${lines.length} recipient(s) · <b>${(amt/lines.length).toFixed(4)} USDC</b> each`;
+  $('splitPreview').innerHTML = `${lines.length} recipient(s) · <b>${(amt/lines.length).toFixed(4)} ${escHtml(NET.native.symbol)}</b> each`;
 }
 $('splitTo').addEventListener('input', previewSplit);
 $('splitAmt').addEventListener('input', previewSplit);
 
 async function sendSplit(){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('splitStatus')) return;
   const lines = $('splitTo').value.split('\n').map(s=>s.trim()).filter(Boolean);
   const addrs = lines.map(validAddr);
   if(!lines.length || lines.length > 20){ setStatus('splitStatus','Between 1 and 20 recipients.','err'); return; }
   const bad = addrs.findIndex(a=>!a);
   if(bad !== -1){ setStatus('splitStatus',`Line ${bad+1} is not a valid address.`,'err'); return; }
-  const amt = $('splitAmt').value.trim().replace(',','.');
-  if(!(parseFloat(amt) > 0)){ setStatus('splitStatus','Enter a total amount above zero.','err'); return; }
+  const amt = parseAmount($('splitAmt').value);
+  if(!amt){ setStatus('splitStatus','Enter a total amount above zero.','err'); return; }
   const note = $('splitNote').value.trim();
   try{
     setStatus('splitStatus','Waiting for wallet confirmation…');
     const c = new ethers.Contract(ARCPAY, ABI, signer);
-    const tx = await c.splitPay(addrs, note, { value: ethers.parseEther(amt) });
+    const tx = await c.splitPay(addrs, note, { value: parseNative(amt) });
     setStatus('splitStatus','⏳ Splitting… ' + short(tx.hash));
     const rc = await tx.wait();
-    setStatus('splitStatus',`✅ Split ${amt} USDC across ${addrs.length} wallets · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view tx ↗</a>`,'ok');
+    setStatus('splitStatus',`✅ Split ${escHtml(amt)} ${NET.native.symbol} across ${addrs.length} wallets · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view tx ↗</a>`,'ok');
     toast('✓ Split sent');
   }catch(e){ setStatus('splitStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
 }
 
 /* ── header gas pill ── */
 async function refreshGas(){
+  if(!readProvider) return;
   try{
     const fee = await readProvider.send('eth_gasPrice', []);
     $('gasPill').textContent = '⛽ ' + (Number(BigInt(fee)) / 1e9).toFixed(2) + ' gwei';
   }catch(_){}
 }
-refreshGas();
-setInterval(refreshGas, 15000);
-
 /* ── CROSS-CHAIN (Chainlink CCIP) ──
    Arc Testnet → Ethereum Sepolia, message-only send.
    Router called directly from the browser — no extra contract to deploy.
    Fee paid in native USDC (feeToken = address(0)). */
-const CCIP_ROUTER = '0xdE4E7FED43FAC37EB21aA0643d9852f75332eab8';
-const SEPOLIA_SELECTOR = '16015286601757825753'; // Ethereum Sepolia CCIP chain selector
+const CCIP_ROUTER = NET.contracts.ccipRouter;
+const CCIP_DEST_SELECTOR = NET.ccip.destSelector;
 const CCIP_ABI = [
   'function getFee(uint64 destinationChainSelector, (bytes receiver, bytes data, (address token, uint256 amount)[] tokenAmounts, address feeToken, bytes extraArgs) message) view returns (uint256)',
   'function ccipSend(uint64 destinationChainSelector, (bytes receiver, bytes data, (address token, uint256 amount)[] tokenAmounts, address feeToken, bytes extraArgs) message) payable returns (bytes32)'
@@ -564,10 +779,10 @@ const CCIP_ABI = [
 
 // Our receiver contract, deployed on Ethereum Sepolia.
 // Messages sent from Pay on Arc land here, get stored, and emit an event.
-const SEPOLIA_RECEIVER = '0x8D77a145a238Aa36f2b20027b353cF1E981B569F';
-const SEPOLIA_RPC = 'https://ethereum-sepolia-rpc.publicnode.com';
-const SEPOLIA_SCAN = 'https://sepolia.etherscan.io';
-const sepoliaProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
+const DEST_RECEIVER = NET.ccip.receiver;
+const DEST_RPC = NET.ccip.destRpc;
+const DEST_SCAN = NET.ccip.destScan;
+const DEST_NAME = NET.ccip.destName;
 const RECEIVER_ABI = [
   'function total() view returns (uint256)',
   'function getMessages(uint256 offset, uint256 limit) view returns ((bytes32 messageId, uint64 sourceChain, address sender, string text, uint256 receivedAt)[])'
@@ -590,13 +805,13 @@ function buildCcipMessage(receiver, text){
 }
 
 async function estimateCcipFee(){
-  const receiver = validAddr($('ccReceiver').value) || SEPOLIA_RECEIVER;
-  if(!receiver){ setStatus('ccStatus','Connect your wallet or enter a destination address first.','err'); return null; }
+  if(!requireReady('ccStatus')) return null;
+  const receiver = validAddr($('ccReceiver').value) || DEST_RECEIVER;
   try{
     const router = new ethers.Contract(CCIP_ROUTER, CCIP_ABI, readProvider);
     const msg = buildCcipMessage(receiver, $('ccMsg').value.trim() || 'gm from Arc');
-    const fee = await router.getFee(SEPOLIA_SELECTOR, msg);
-    $('ccFee').innerHTML = `Fee: <b>${Number(ethers.formatEther(fee)).toFixed(6)} USDC</b> <span style="color:var(--muted)">· paid on Arc</span>`;
+    const fee = await router.getFee(CCIP_DEST_SELECTOR, msg);
+    $('ccFee').innerHTML = `Fee: <b>${Number(formatNative(fee)).toFixed(6)} ${NET.native.symbol}</b> <span style="color:var(--muted)">· paid on ${escHtml(NET.label)}</span>`;
     setStatus('ccStatus','');
     return fee;
   }catch(e){
@@ -606,18 +821,21 @@ async function estimateCcipFee(){
 }
 
 async function sendCcip(){
-  if(!signer){ await connect(); if(!signer) return; }
-  const receiver = validAddr($('ccReceiver').value) || SEPOLIA_RECEIVER;
-  if(!receiver){ setStatus('ccStatus','Enter a destination address, or leave empty to use the Pay on Arc receiver contract.','err'); return; }
+  if(!await requireSigner('ccStatus')) return;
+  const receiver = validAddr($('ccReceiver').value) || DEST_RECEIVER;
   const text = $('ccMsg').value.trim() || 'gm from Arc';
   try{
     setStatus('ccStatus','Estimating fee…');
     const router = new ethers.Contract(CCIP_ROUTER, CCIP_ABI, signer);
     const msg = buildCcipMessage(receiver, text);
-    const fee = await router.getFee(SEPOLIA_SELECTOR, msg);
-    $('ccFee').innerHTML = `Fee: <b>${Number(ethers.formatEther(fee)).toFixed(6)} USDC</b> <span style="color:var(--muted)">· paid on Arc</span>`;
+    const fee = await router.getFee(CCIP_DEST_SELECTOR, msg);
+    $('ccFee').innerHTML = `Fee: <b>${Number(formatNative(fee)).toFixed(6)} ${NET.native.symbol}</b> <span style="color:var(--muted)">· paid on ${escHtml(NET.label)}</span>`;
     setStatus('ccStatus','Waiting for wallet confirmation…');
-    const tx = await router.ccipSend(SEPOLIA_SELECTOR, msg, { value: fee });
+    // The router quotes a live fee; it can tick up between the quote and the
+    // send, which reverts the transaction. Overpay 2% — the router refunds the
+    // unused remainder to the sender.
+    const funded = fee + (fee / 50n);
+    const tx = await router.ccipSend(CCIP_DEST_SELECTOR, msg, { value: funded });
     setStatus('ccStatus','⏳ Sending across chains… ' + short(tx.hash));
     const rc = await tx.wait();
     setStatus('ccStatus',`✅ Sent from Arc → Ethereum Sepolia · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">Arc tx ↗</a> · <a href="https://ccip.chain.link" target="_blank" rel="noreferrer">track on CCIP ↗</a><br/><span style="color:var(--muted)">Delivery takes a few minutes. Once it lands, hit "Load messages on Sepolia" below to see it stored in your receiver contract.</span>`,'ok');
@@ -627,10 +845,11 @@ async function sendCcip(){
 
 /* Read messages that have landed in the receiver contract on Sepolia */
 async function loadSepoliaMessages(){
+  if(!requireReady()) return;
   const box = $('ccInbox');
   box.innerHTML = '<p class="empty">Reading your receiver contract on Ethereum Sepolia…</p>';
   try{
-    const c = new ethers.Contract(SEPOLIA_RECEIVER, RECEIVER_ABI, sepoliaProvider);
+    const c = new ethers.Contract(DEST_RECEIVER, RECEIVER_ABI, sepoliaProvider);
     const list = await c.getMessages(0, 20); // newest first
     if(!list.length){
       box.innerHTML = '<p class="empty">No messages have landed yet. After you send one, give CCIP a few minutes, then load again.</p>';
@@ -651,32 +870,61 @@ async function loadSepoliaMessages(){
   }
 }
 
-/* ── LOG OKUMA: önce ArcScan API, olmazsa RPC (son 50k blok) ── */
-async function getAllLogs(){
-  try{
-    let items = [], pp = null;
-    for(let p = 0; p < 5; p++){
-      let url = `${SCAN}/api/v2/addresses/${ARCPAY}/logs`;
-      if(pp) url += '?' + new URLSearchParams(pp).toString();
-      const r = await fetch(url);
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      const j = await r.json();
-      items = items.concat(j.items || []);
-      if(!j.next_page_params) break;
-      pp = j.next_page_params;
+/* ── LOG READING ──────────────────────────────────────────────────────────
+   Both `from` and `to` are indexed on these events, so the chain can filter
+   for us. The old path pulled *every* log the contract ever emitted (capped at
+   5 explorer pages) and filtered in JS — on a busy contract a user's own
+   payments fall off the end of that window and simply stop showing up.
+   Primary path: indexed topic queries over a chunked block range.
+   Fallback: the explorer's address-log feed, as before. */
+const LOG_LOOKBACK_BLOCKS = 500000;
+const LOG_CHUNK_BLOCKS = 50000;
+const addrTopic = a => ethers.zeroPadValue(ethers.getAddress(a), 32);
+
+async function queryLogs(topicSets){
+  const latest = await readProvider.getBlockNumber();
+  const from = Math.max(0, latest - LOG_LOOKBACK_BLOCKS);
+  const out = [];
+  for(const topics of topicSets){
+    for(let start = from; start <= latest; start += LOG_CHUNK_BLOCKS){
+      const end = Math.min(start + LOG_CHUNK_BLOCKS - 1, latest);
+      const logs = await readProvider.getLogs({ address: ARCPAY, topics, fromBlock: start, toBlock: end });
+      out.push(...logs.map(l => ({ topics:[...l.topics], data:l.data,
+        transactionHash:l.transactionHash, blockNumber:l.blockNumber, index:l.index })));
     }
-    return items.map((l,i)=>({
-      topics: (l.topics || []).filter(Boolean),
-      data: l.data || '0x',
-      transactionHash: l.transaction_hash || l.tx_hash || '',
-      blockNumber: Number(l.block_number || 0),
-      index: l.index ?? i
-    }));
-  }catch(e){
-    const latest = await readProvider.getBlockNumber();
-    const logs = await readProvider.getLogs({ address: ARCPAY, fromBlock: Math.max(0, latest - 50000), toBlock: 'latest' });
-    return logs.map(l=>({ topics:[...l.topics], data:l.data, transactionHash:l.transactionHash, blockNumber:l.blockNumber, index:l.index }));
   }
+  // The same log can match two topic sets (e.g. paying yourself) — de-duplicate.
+  const seen = new Set();
+  return out.filter(l => {
+    const k = l.transactionHash + ':' + l.index;
+    if(seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
+
+async function explorerLogs(){
+  let items = [], pp = null;
+  for(let p = 0; p < 5; p++){
+    let url = `${SCAN}/api/v2/addresses/${ARCPAY}/logs`;
+    if(pp) url += '?' + new URLSearchParams(pp).toString();
+    const j = await fetchJson(url);
+    items = items.concat(j.items || []);
+    if(!j.next_page_params) break;
+    pp = j.next_page_params;
+  }
+  return items.map((l,i)=>({
+    topics: (l.topics || []).filter(Boolean),
+    data: l.data || '0x',
+    transactionHash: l.transaction_hash || l.tx_hash || '',
+    blockNumber: Number(l.block_number || 0),
+    index: l.index ?? i
+  }));
+}
+
+/* topicSets: array of topic filters to run; falls back to a full address scan. */
+async function getLogsFor(topicSets){
+  try{ return await queryLogs(topicSets); }
+  catch(e){ return await explorerLogs(); }
 }
 function parseAll(logs){
   return logs.map(l=>{
@@ -687,18 +935,22 @@ function parseAll(logs){
 
 /* ── HISTORY ── */
 async function loadHistory(){
+  if(!requireReady()) return;
   if(!userAddress){ await connect(); if(!userAddress) return; }
   $('histList').innerHTML = '<p class="empty">Reading PaymentSent events from chain…</p>';
   try{
     const me = userAddress.toLowerCase();
-    const all = parseAll(await getAllLogs())
+    const sig = iface.getEvent('PaymentSent').topicHash;
+    const mine = addrTopic(userAddress);
+    const logs = await getLogsFor([[sig, mine, null], [sig, null, mine]]);
+    const all = parseAll(logs)
       .filter(x => x.ev.name === 'PaymentSent' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me))
       .sort((a,b)=>b.l.blockNumber - a.l.blockNumber);
     if(!all.length){ $('histList').innerHTML = '<p class="empty">No receipts yet — send your first payment in the Pay tab.</p>'; return; }
     $('histList').innerHTML = all.slice(0,30).map(({ev,l})=>{
       const out = ev.args.from.toLowerCase() === me;
       return `<div class="receipt">
-        <div class="r-amt" style="color:${out?'var(--text)':'var(--green)'}">${out?'−':'+'}${Number(ethers.formatEther(ev.args.amount)).toFixed(4)} USDC</div>
+        <div class="r-amt" style="color:${out?'var(--text)':'var(--green)'}">${out?'−':'+'}${Number(formatNative(ev.args.amount)).toFixed(4)} ${NET.native.symbol}</div>
         <div class="r-sep"></div>
         <div class="r-line"><span>${out?'to':'from'}</span><b>${short(out?ev.args.to:ev.args.from)}</b></div>
         ${ev.args.note ? `<div class="r-line"><span>note</span><b>${escHtml(ev.args.note)}</b></div>` : ''}
@@ -720,16 +972,16 @@ function pickWindow(btn){
 }
 
 async function sendRecallable(){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('rcStatus')) return;
   const to = validAddr($('rcTo').value);
-  const amt = $('rcAmt').value.trim().replace(',','.');
+  const amt = parseAmount($('rcAmt').value);
   const note = $('rcNote').value.trim();
   if(!to){ setStatus('rcStatus','Enter a valid recipient address.','err'); return; }
-  if(!(parseFloat(amt) > 0)){ setStatus('rcStatus','Enter an amount above zero.','err'); return; }
+  if(!amt){ setStatus('rcStatus','Enter an amount above zero.','err'); return; }
   try{
     setStatus('rcStatus','Waiting for wallet confirmation…');
     const c = new ethers.Contract(ARCPAY, ABI, signer);
-    const tx = await c.payRecallable(to, rcWindow, note, { value: ethers.parseEther(amt) });
+    const tx = await c.payRecallable(to, rcWindow, note, { value: parseNative(amt) });
     setStatus('rcStatus','⏳ Sending… ' + short(tx.hash));
     const rc = await tx.wait();
     setStatus('rcStatus',`✅ Recallable sent — recipient can claim now, you can recall after the window · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
@@ -740,27 +992,31 @@ async function sendRecallable(){
 
 let rcItems = [];
 async function loadRecalls(){
+  if(!requireReady()) return;
   if(!userAddress){ await connect(); if(!userAddress) return; }
   $('rcList').innerHTML = '<p class="empty">Reading recallable payments from chain…</p>';
   try{
     const me = userAddress.toLowerCase();
-    const created = parseAll(await getAllLogs())
+    const sig = iface.getEvent('RecallableCreated').topicHash;
+    const mine = addrTopic(userAddress);
+    const logs = await getLogsFor([[sig, null, mine, null], [sig, null, null, mine]]);
+    const created = parseAll(logs)
       .filter(x => x.ev.name === 'RecallableCreated' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me));
     if(!created.length){ $('rcList').innerHTML = '<p class="empty">No recallable payments yet — send one above.</p>'; return; }
     const c = new ethers.Contract(ARCPAY, ABI, readProvider);
-    rcItems = await Promise.all(created.map(async ({ev})=>{
+    rcItems = await inBatches(created, 10, async ({ev})=>{
       const id = Number(ev.args.id);
       const onchain = await c.rpays(id);
       return {
         id,
         from: ev.args.from, to: ev.args.to,
-        amount: ethers.formatEther(ev.args.amount),
+        amount: formatNative(ev.args.amount),
         deadline: Number(ev.args.recallAfter),
         note: ev.args.note,
         status: Number(onchain.status), // 0 open 1 claimed 2 recalled
         out: ev.args.from.toLowerCase() === me
       };
-    }));
+    });
     rcItems.sort((a,b)=>b.id-a.id);
     renderRecalls();
   }catch(e){
@@ -804,7 +1060,7 @@ function renderRecalls(){
 setInterval(()=>{ if($('sec-recall').classList.contains('active')) renderRecalls(); }, 1000);
 
 async function claimPay(id){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner()) return;
   try{
     const c = new ethers.Contract(ARCPAY, ABI, signer);
     const tx = await c.claim(id); toast('⏳ Claiming…');
@@ -812,7 +1068,7 @@ async function claimPay(id){
   }catch(e){ toast('Claim failed: ' + (e.shortMessage||e.message||'').slice(0,50)); }
 }
 async function recallPay(id){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner()) return;
   try{
     const c = new ethers.Contract(ARCPAY, ABI, signer);
     const tx = await c.recall(id); toast('⏳ Recalling…');
@@ -820,7 +1076,49 @@ async function recallPay(id){
   }catch(e){ toast('Recall failed: ' + (e.shortMessage||e.message||'').slice(0,50)); }
 }
 
-checkIncoming();
+/* Nothing above this line touches the network. boot() is the only place that
+   constructs providers, and it runs only after ethers has loaded and the
+   network profile has been checked. */
+function boot(){
+  const missing = configProblems();
+  if(missing.length){
+    fatal(`Configuration incomplete for "${NET.label}" — missing: ${missing.join(', ')}. Fill these in under NETWORKS['${ACTIVE_NETWORK}'] before using this build.`);
+    return;
+  }
+  readProvider = new ethers.JsonRpcProvider(RPC);
+  iface = new ethers.Interface(ABI);
+  sepoliaProvider = new ethers.JsonRpcProvider(DEST_RPC);
+  booted = true;
+
+  // Links and copy that depend on the active network.
+  $('cLink').href = `${SCAN}/address/${ARCPAY}`;
+  $('netPill').textContent = NET.label;
+  $('footNet').textContent = NET.label;
+  $('ccReceiver').value = DEST_RECEIVER;
+  $('ccLaneSrc').textContent = NET.label;
+  $('ccLane').textContent = DEST_NAME;
+  $('ccDestName').textContent = DEST_NAME;
+  $('ccReceiverLink').href = `${DEST_SCAN}/address/${DEST_RECEIVER}`;
+  $('ccReceiverLink').textContent = short(DEST_RECEIVER) + ' ↗';
+  $('ccRouterAddr').textContent = short(CCIP_ROUTER);
+  $('ccReceiverAddr').textContent = short(DEST_RECEIVER);
+  $('tAgentLink').href = `${SCAN}/address/${TREASURY}`;
+  $('tAgentLink').textContent = short(TREASURY) + ' ↗';
+  $('tPythAddr').textContent = short(PYTH);
+
+  // The billing agent keeps a private key in localStorage. That is acceptable
+  // for a testnet demo and unacceptable for real funds — disable it outright.
+  if(!IS_TESTNET) kpDisableForMainnet();
+
+  refreshGas();
+  setInterval(refreshGas, 15000);
+  checkIncoming();
+}
+
+window.__ethersReady
+  .then(boot)
+  .catch(() => fatal('Could not load the ethers library — the app cannot sign or read anything. Check your connection and reload.'));
+
 window.connect=connect; window.disconnect=disconnect; window.go=go; window.sendPay=sendPay; window.makeLink=makeLink;
 window.payIncoming=payIncoming; window.sendSplit=sendSplit; window.loadHistory=loadHistory;
 window.pickWindow=pickWindow; window.sendRecallable=sendRecallable; window.loadRecalls=loadRecalls;
@@ -828,8 +1126,8 @@ window.claimPay=claimPay; window.recallPay=recallPay;
 window.estimateCcipFee=estimateCcipFee; window.sendCcip=sendCcip; window.loadSepoliaMessages=loadSepoliaMessages;
 
 /* ===== Subscriptions contract ===== */
-const ARCSUB = '0x015f65293c936741588dC03ebDD1A193D62535eC';
-const USDC_ERC20 = '0x3600000000000000000000000000000000000000';
+const ARCSUB = NET.contracts.subs;
+const USDC_ERC20 = NET.contracts.usdc;
 const SUB_ABI = [
   'function subscribe(address merchant, uint96 amount, uint32 interval, string label) returns (uint256)',
   'function charge(uint256 id)',
@@ -881,20 +1179,20 @@ async function ensureSubAllowance(minAmount){
 
 async function createSub(){
   if (!ARCSUB){ setStatus('subStatus','Subscription contract not deployed yet.','err'); return; }
-  if (!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('subStatus')) return;
   const to = validAddr($('subTo').value);
-  const amt = parseFloat($('subAmt').value);
+  const amt = parseAmount($('subAmt').value);
   const label = $('subLabel').value.trim() || 'subscription';
   if (!to){ setStatus('subStatus','Enter a valid merchant address.','err'); return; }
-  if (!amt || isNaN(amt)){ setStatus('subStatus','Enter a valid amount.','err'); return; }
+  if (!amt){ setStatus('subStatus','Enter an amount above zero.','err'); return; }
   try{
-    const amount = ethers.parseUnits(amt.toFixed(6), 6);
+    const amount = toUnits6(amt);
     await ensureSubAllowance(amount);
     setStatus('subStatus','Confirm subscription — first period is charged now…');
     const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
     const tx = await c.subscribe(to, amount, subInterval, label);
     const rc = await tx.wait();
-    setStatus('subStatus',`✓ Subscribed — ${amt} USDC ${intervalName(subInterval)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    setStatus('subStatus',`✓ Subscribed — ${escHtml(amt)} USDC ${intervalName(subInterval)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Subscription live');
     loadSubs();
   }catch(e){ setStatus('subStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
@@ -902,16 +1200,15 @@ async function createSub(){
 
 async function fetchSubs(ids){
   const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
-  const out = [];
-  for (const id of ids){
+  const rows = await inBatches([...ids], 10, async id => {
     try{
       const s = await c.getSub(id);
-      out.push({ id: id.toString(), subscriber: s.subscriber, merchant: s.merchant,
+      return { id: id.toString(), subscriber: s.subscriber, merchant: s.merchant,
         amount: s.amount, interval: s.interval, nextChargeAt: s.nextChargeAt,
-        active: s.active, label: s.label });
-    }catch{}
-  }
-  return out;
+        active: s.active, label: s.label };
+    }catch{ return null; }
+  });
+  return rows.filter(Boolean);
 }
 
 function subRow(s, mine){
@@ -935,6 +1232,7 @@ function subRow(s, mine){
 
 async function loadSubs(){
   if (!ARCSUB){ toast('Subscription contract not deployed yet'); return; }
+  if(!requireReady()) return;
   if (!userAddress){ await connect(); if(!userAddress) return; }
   const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
   try{
@@ -952,14 +1250,14 @@ async function loadSubs(){
     const monthly = activeMerch.reduce((t,s)=> t + Number(ethers.formatUnits(s.amount,6)) * (2592000/Number(s.interval)), 0);
     $('myMerchList').innerHTML = (activeMerch.length
       ? `<div class="hint" style="margin-bottom:10px;">Active subscribers: <b>${activeMerch.length}</b> · est. monthly revenue: <b>${monthly.toFixed(2)} USDC</b></div>`
-      : '') + (merchSubsCache.length
-      ? merchSubsCache.map(s=>subRow(s,false)).join('')
+      : '') + (activeMerch.length
+      ? activeMerch.map(s=>subRow(s,false)).join('')
       : '<p class="empty">Nobody subscribed to you yet. Share your address with a label 😎</p>');
   }catch(e){ toast('Load failed: '+(e.shortMessage||e.message||'').slice(0,60)); }
 }
 
 async function chargeSub(id){
-  if (!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('merchStatus')) return;
   try{
     setStatus('merchStatus','Confirm charge…');
     const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
@@ -972,7 +1270,7 @@ async function chargeSub(id){
 }
 
 async function cancelSub(id){
-  if (!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner()) return;
   try{
     const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
     const tx = await c.cancel(id);
@@ -983,7 +1281,7 @@ async function cancelSub(id){
 }
 
 async function collectDue(){
-  if (!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('merchStatus')) return;
   await loadSubs();
   const due = merchSubsCache.filter(subDue).map(s=>s.id);
   if (!due.length){ setStatus('merchStatus','Nothing due right now.'); return; }
@@ -1007,8 +1305,9 @@ function toggleAutoCollect(){
     $('autoCollectBtn').textContent = '🤖 Auto-collector: ON';
     toast('Auto-collector running — checks every 60s');
     autoCollectTimer = setInterval(async ()=>{
-      if (!signer || !ARCSUB) return;
+      if (!signer || !ARCSUB || !booted) return;
       try{
+        await ensureChain();   // unattended loop — never sign on the wrong chain
         await loadSubs();
         const due = merchSubsCache.filter(subDue).map(s=>s.id);
         if (due.length){
@@ -1028,19 +1327,53 @@ const KP_KEY = 'arcpayKeeperKey_v1';
 const KP_ABI = [
   'function nextId() view returns (uint256)',
   'function charge(uint256 id)',
+  'function chargeMany(uint256[] ids)',
   'function getSub(uint256 id) view returns (address subscriber, address merchant, uint96 amount, uint32 interval, uint40 nextChargeAt, bool active, string label)'
 ];
 let kpWallet = null, kpTimer = null, kpBusy = false;
+let kpSubs = new Map();        // id -> cached subscription row
+let kpHighestId = 0;           // highest id already discovered
+let kpGasWarned = false;
+const KP_BATCH = 25;           // ids charged per chargeMany call
+const KP_MIN_GAS = 0.05;       // below this the agent stops trying and asks to be funded
 
+/* The agent holds a private key in localStorage. That is a fine trade for a
+   testnet demo and a bad one for real money, so a non-testnet build turns the
+   whole feature off rather than tempting anyone to fund it. */
+function kpDisableForMainnet(){
+  $('sec-agent').querySelectorAll('button, input').forEach(el => { el.disabled = true; });
+  $('kpState').textContent = '⛔ disabled on ' + NET.label;
+  $('kpState').className = 'status err';
+  $('kpTerm').textContent =
+    '[boot] The billing agent stores a burner private key in this browser. That is testnet-only by design and is disabled on ' +
+    NET.label + '. Use the "Collect all due payments" button on the Subscriptions tab, or run a keeper from a server you control.';
+}
+function kpAllowed(){
+  if(IS_TESTNET) return true;
+  toast('Billing agent is testnet-only.');
+  return false;
+}
+
+const KP_TERM_MAX_LINES = 300;
 function kpLog(m, cls){
   const el = $('kpTerm');
-  const t = new Date().toLocaleTimeString('tr-TR');
+  const t = new Date().toLocaleTimeString();
   const color = cls==='ok' ? 'var(--green)' : cls==='err' ? 'var(--red)' : cls==='warn' ? 'var(--amber)' : 'var(--muted)';
-  el.innerHTML += `\n<span style="color:var(--muted)">[${t}]</span> <span style="color:${color}">${m}</span>`;
+  const line = document.createElement('div');
+  const stamp = document.createElement('span');
+  stamp.style.color = 'var(--muted)';
+  stamp.textContent = `[${t}] `;
+  const body = document.createElement('span');
+  body.style.color = color;
+  body.textContent = String(m);        // textContent, never innerHTML — labels come from strangers
+  line.append(stamp, body);
+  el.appendChild(line);
+  while(el.childElementCount > KP_TERM_MAX_LINES) el.removeChild(el.firstElementChild);
   el.scrollTop = el.scrollHeight;
 }
 
 function kpInit(){
+  if (!kpAllowed()) return;
   if (kpWallet) return;
   let k = localStorage.getItem(KP_KEY);
   if (!k){
@@ -1057,36 +1390,109 @@ async function kpBal(){
   if (!kpWallet) return;
   try{
     const b = await readProvider.getBalance(kpWallet.address);
-    $('kpGas').textContent = Number(ethers.formatEther(b)).toFixed(3) + ' USDC';
+    $('kpGas').textContent = Number(formatNative(b)).toFixed(3) + ' ' + NET.native.symbol;
   }catch(_){}
+}
+
+/* Refresh the cached subscription table: pick up ids created since the last
+   pass, and re-read only rows that have come due. Steady state is a single
+   nextId() call per tick instead of a few hundred serial getSub() reads. */
+async function kpRefresh(c){
+  const maxId = Number(await c.nextId());
+  const fresh = [];
+  for (let id = Math.max(1, kpHighestId + 1); id < maxId; id++) fresh.push(id);
+  kpHighestId = Math.max(kpHighestId, maxId - 1);
+
+  const now = Math.floor(Date.now()/1000);
+  const stale = [...kpSubs.entries()]
+    .filter(([, v]) => v.active && now >= v.nextChargeAt)
+    .map(([id]) => id);
+
+  const ids = [...new Set([...fresh, ...stale])];
+  if (fresh.length) kpLog(`📇 ${fresh.length} new subscription(s) discovered (up to #${kpHighestId}).`);
+
+  await inBatches(ids, 10, async id => {
+    try{
+      const s = await c.getSub(id);
+      kpSubs.set(id, {
+        active: s.active,
+        nextChargeAt: Number(s.nextChargeAt),
+        amount: s.amount,
+        merchant: s.merchant,
+        label: s.label
+      });
+    }catch{ kpSubs.delete(id); }
+  });
 }
 
 async function kpTick(){
   if (kpBusy || !kpWallet) return;
   kpBusy = true;
   try{
-    const c = new ethers.Contract(ARCSUB, KP_ABI, kpWallet);
-    const maxId = Number(await c.nextId());
-    const now = Math.floor(Date.now()/1000);
-    for (let id = 1; id < Math.min(maxId, 200); id++){
-      let s; try{ s = await c.getSub(id); }catch{ continue; }
-      if (!s.active || now < Number(s.nextChargeAt)) continue;
-      kpLog(`🔁 Subscription #${id} ("${s.label}") is due — collecting ${ethers.formatUnits(s.amount,6)} USDC for ${short(s.merchant)}…`);
-      try{
-        const tx = await c.charge(id);
-        await tx.wait();
-        kpLog(`✓ #${id} charged autonomously — merchant paid, next cycle scheduled.`,'ok');
-      }catch(e){
-        kpLog(`#${id} charge failed: ` + (e.shortMessage||e.message||'').slice(0,70) + (String(e.message||'').includes('insufficient') ? ' — fund my gas!' : ''),'err');
-      }
+    // Out of gas → say so once and idle, instead of a failing charge every tick.
+    const gas = Number(formatNative(await readProvider.getBalance(kpWallet.address)));
+    if (gas < KP_MIN_GAS){
+      if (!kpGasWarned){ kpLog(`⛽ Only ${gas.toFixed(4)} ${NET.native.symbol} left — fund my gas and I'll resume.`,'warn'); kpGasWarned = true; }
+      kpBal();
+      return;
     }
-    kpBal();
-  }catch(e){ kpLog('tick error: ' + (e.shortMessage||e.message||'').slice(0,70),'err'); }
-  kpBusy = false;
+    kpGasWarned = false;
+
+    const c = new ethers.Contract(ARCSUB, KP_ABI, kpWallet);
+    await kpRefresh(c);
+
+    const now = Math.floor(Date.now()/1000);
+    const due = [...kpSubs.entries()].filter(([, v]) => v.active && now >= v.nextChargeAt);
+    if (!due.length) return;
+
+    for (let i = 0; i < due.length; i += KP_BATCH){
+      const slice = due.slice(i, i + KP_BATCH);
+      const ids = slice.map(([id]) => id);
+      for (const [id, v] of slice){
+        // v.label is a stranger's string — kpLog writes it as text, never markup.
+        kpLog(`🔁 Subscription #${id} ("${v.label}") is due — collecting ${ethers.formatUnits(v.amount,6)} USDC for ${short(v.merchant)}…`);
+      }
+      try{
+        const tx = ids.length === 1 ? await c.charge(ids[0]) : await c.chargeMany(ids);
+        await tx.wait();
+        kpLog(`✓ ${ids.length} subscription(s) charged autonomously — merchants paid, next cycles scheduled.`,'ok');
+      }catch(e){
+        const msg = (e.shortMessage || e.message || '');
+        const broke = msg.toLowerCase().includes('insufficient');
+        kpLog(`batch [${ids.join(', ')}] failed: ` + msg.slice(0,80) + (broke ? ' — fund my gas!' : ''), 'err');
+        // One uncollectable subscriber (no allowance, empty wallet) reverts the
+        // whole chargeMany. Fall back to charging one at a time so the rest of
+        // the batch still gets paid.
+        if(!broke && ids.length > 1){
+          kpLog('↩ retrying the batch one subscription at a time…','warn');
+          for(const id of ids){
+            try{
+              await (await c.charge(id)).wait();
+              kpLog(`✓ #${id} charged.`,'ok');
+            }catch(e2){
+              kpLog(`#${id} skipped: ` + (e2.shortMessage||e2.message||'').slice(0,70),'err');
+            }
+          }
+        }
+      }
+      // Re-read what we just touched so a failed charge is not retried blindly.
+      await inBatches(ids, 10, async id => {
+        try{
+          const sd = await c.getSub(id);
+          kpSubs.set(id, { active: sd.active, nextChargeAt: Number(sd.nextChargeAt),
+            amount: sd.amount, merchant: sd.merchant, label: sd.label });
+        }catch{ kpSubs.delete(id); }
+      });
+    }
+  }catch(e){ kpLog('tick error: ' + (e.shortMessage||e.message||'').slice(0,80),'err'); }
+  finally{ kpBusy = false; kpBal(); }
 }
 
 function kpStart(){
+  if (!kpAllowed()) return;
+  if (!requireReady('kpStatus')) return;
   kpInit();
+  if (!kpWallet) return;
   if (kpTimer) return;
   kpTimer = setInterval(kpTick, 15000);
   kpTick();
@@ -1100,12 +1506,13 @@ function kpStop(){
 }
 
 async function kpFund(){
+  if(!await requireSigner('kpStatus')) return;
   kpInit();
-  if (!signer){ await connect(); if(!signer) return; }
-  const amt = $('kpFundAmt').value || '1';
+  const amt = parseAmount($('kpFundAmt').value || '1');
+  if(!amt){ setStatus('kpStatus','Enter a gas amount above zero.','err'); return; }
   try{
-    setStatus('kpStatus', `Confirm sending ${amt} USDC gas to the agent…`);
-    const tx = await signer.sendTransaction({ to: kpWallet.address, value: ethers.parseEther(amt) });
+    setStatus('kpStatus', `Confirm sending ${amt} ${NET.native.symbol} gas to the agent…`);
+    const tx = await signer.sendTransaction({ to: kpWallet.address, value: parseNative(amt) });
     const rc = await tx.wait();
     setStatus('kpStatus', `✓ Agent funded · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     kpBal();
@@ -1113,11 +1520,12 @@ async function kpFund(){
 }
 
 async function kpSweep(){
+  if(!requireReady('kpStatus')) return;
   kpInit();
   if (!userAddress){ await connect(); if(!userAddress) return; }
   try{
     const bal = await readProvider.getBalance(kpWallet.address);
-    const keep = ethers.parseEther('0.2');
+    const keep = parseNative('0.2');
     if (bal <= keep){ setStatus('kpStatus','Nothing to sweep (keeping 0.2 for gas).'); return; }
     const tx = await kpWallet.sendTransaction({ to: userAddress, value: bal - keep });
     await tx.wait();
@@ -1128,18 +1536,21 @@ async function kpSweep(){
 }
 
 function kpReset(){
-  if (!confirm('Generate a NEW agent key? Sweep gas back first!')) return;
+  if (!kpAllowed()) return;
+  if (!confirm('Generate a NEW agent key? Any gas left on the old one becomes unreachable — sweep it back first!')) return;
   localStorage.removeItem(KP_KEY);
-  kpWallet = null; kpStop(); kpInit();
+  kpWallet = null; kpStop();
+  kpSubs.clear(); kpHighestId = 0; kpGasWarned = false;
+  kpInit();
 }
 
 window.kpStart=kpStart; window.kpStop=kpStop; window.kpFund=kpFund; window.kpSweep=kpSweep; window.kpReset=kpReset;
 
 /* ===== Treasury agent (Pyth EUR/USD · USDC⇄EURC ratio) ===== */
-const TREASURY = '0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53';
-const EURC = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
-const PYTH = '0x2880aB155794e7179c9eE2e38200202908C17B43';
-const PYTH_EURUSD_ID = '0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b';
+const TREASURY = NET.contracts.treasury;
+const EURC = NET.contracts.eurc;
+const PYTH = NET.contracts.pyth;
+const PYTH_EURUSD_ID = NET.pythEurUsdId;
 const HERMES = 'https://hermes.pyth.network/v2/updates/price/latest';
 const TREASURY_ABI = [
   'function rebalance(bytes[] updateData) payable',
@@ -1159,10 +1570,10 @@ const ERC20_T_ABI = [
 let eurUsd = null, pythTimer = null, tState = null;
 
 async function pythRefresh(){
+  if(!booted) return null;
   $('eurMeta').textContent = 'fetching…';
   try{
-    const r = await fetch(`${HERMES}?ids[]=${PYTH_EURUSD_ID}`);
-    const j = await r.json();
+    const j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}`);
     const p = j.parsed?.[0]?.price;
     if(!p) throw new Error('no price in feed');
     eurUsd = Number(p.price) * Math.pow(10, Number(p.expo));
@@ -1195,14 +1606,14 @@ function pythToggleLive(){
 
 // Pull the signed Pyth update blob (VAA) needed to move the price on-chain.
 async function pythUpdateData(){
-  const r = await fetch(`${HERMES}?ids[]=${PYTH_EURUSD_ID}&encoding=hex`);
-  const j = await r.json();
+  const j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}&encoding=hex`);
   const arr = j.binary?.data || [];
   if(!arr.length) throw new Error('no Pyth update data');
   return arr.map(h => h.startsWith('0x') ? h : '0x'+h);
 }
 
 async function treasuryScan(){
+  if(!requireReady('tStatus')) return;
   try{
     setStatus('tStatus','Reading treasury status on-chain…');
     const c = new ethers.Contract(TREASURY, TREASURY_ABI, readProvider);
@@ -1259,17 +1670,19 @@ function renderHealth(){
 }
 
 async function treasuryDeposit(which){
-  if(!signer){ await connect(); if(!signer) return; }
-  const amt = parseFloat($('tDepAmt').value);
-  if(!amt || isNaN(amt) || amt <= 0){ setStatus('tStatus','Enter a deposit amount.','err'); return; }
+  if(!await requireSigner('tStatus')) return;
+  const amt = parseAmount($('tDepAmt').value);
+  if(!amt){ setStatus('tStatus','Enter a deposit amount above zero.','err'); return; }
   const token = which === 'eurc' ? EURC : USDC_ERC20;
   const sym = which === 'eurc' ? 'EURC' : 'USDC';
   try{
-    const wei = ethers.parseUnits(amt.toFixed(6), 6);
+    const wei = toUnits6(amt);
     const erc = new ethers.Contract(token, ERC20_T_ABI, signer);
+    // Approve exactly this deposit rather than an unlimited allowance — a
+    // treasury bug or key compromise then cannot drain the wallet later.
     if(await erc.allowance(userAddress, TREASURY) < wei){
       setStatus('tStatus',`Approve ${sym} for the treasury…`);
-      await (await erc.approve(TREASURY, ethers.MaxUint256)).wait();
+      await (await erc.approve(TREASURY, wei)).wait();
     }
     setStatus('tStatus',`Depositing ${amt} ${sym}…`);
     const c = new ethers.Contract(TREASURY, TREASURY_ABI, signer);
@@ -1281,7 +1694,7 @@ async function treasuryDeposit(which){
 }
 
 async function treasuryRebalance(){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('tStatus')) return;
   try{
     await treasuryScan();
     if(!tState) return;
@@ -1305,10 +1718,12 @@ async function treasuryRebalance(){
         setStatus('tStatus',`To settle this you must supply ~${need.toFixed(2)} ${sym} as keeper, but you hold ${bal.toFixed(2)} ${sym}. Get more ${sym}, or fund the treasury to shrink the gap first.`,'err');
         return;
       }
+      // Head-room for the price moving between the quote and the settle, but
+      // still a bounded allowance rather than MaxUint256.
       const needWei = ethers.parseUnits((need * 2).toFixed(6), 6);
       if(await erc.allowance(userAddress, TREASURY) < needWei){
         setStatus('tStatus',`Approve ${sym} so the agent can settle…`);
-        await (await erc.approve(TREASURY, ethers.MaxUint256)).wait();
+        await (await erc.approve(TREASURY, needWei)).wait();
       }
     }
 

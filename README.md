@@ -1,0 +1,92 @@
+# Pay on Arc
+
+USDC-native payments on Arc: direct payments with an on-chain note, pay-links,
+20-way splits, recallable payments, subscriptions with an autonomous billing
+agent, Chainlink CCIP cross-chain messaging, and a Pyth-fed treasury agent.
+
+Single static page — `index.html` — plus a vendored copy of ethers and a
+Playwright test suite.
+
+## Running locally
+
+```bash
+npm install          # test tooling only; the page itself has no build step
+npm run serve        # http://127.0.0.1:8080
+npm test             # headless Playwright suite
+```
+
+The page can also be opened straight from a static host; nothing is compiled.
+
+## Switching networks
+
+Every chain constant lives in one place: the `NETWORKS` map at the top of the
+inline script in `index.html`. Nothing else in the file hardcodes a chain ID,
+an RPC, an explorer or a contract address.
+
+```js
+const ACTIVE_NETWORK = 'arc-testnet';   // ← the only line to change
+```
+
+To go live, fill in the `arc-mainnet` profile and flip that constant:
+
+| Key | What it needs |
+| --- | --- |
+| `chainId`, `rpc`, `scan` | Arc mainnet chain ID, RPC endpoint, block explorer |
+| `native` | Symbol and decimals of the native gas token |
+| `contracts.pay` | Pay on Arc payments contract |
+| `contracts.subs` | Subscriptions contract |
+| `contracts.treasury` | Treasury agent contract |
+| `contracts.usdc`, `contracts.eurc` | Stablecoin token addresses |
+| `contracts.ccipRouter` | Chainlink CCIP router on Arc |
+| `contracts.pyth` | Pyth contract on Arc |
+| `ccip.destSelector`, `ccip.receiver`, `ccip.destRpc`, `ccip.destScan` | The far side of the CCIP lane |
+
+`configProblems()` runs at boot and refuses to start on a profile with blanks,
+listing exactly what is missing — a half-configured build cannot quietly send
+real money to the zero address.
+
+### What changes automatically on a non-testnet profile
+
+The **billing agent** keeps a burner private key in `localStorage`. That is a
+reasonable trade for a testnet demo and a bad one for real funds, so the whole
+tab disables itself when `testnet: false`. Merchants collect with the
+"Collect all due payments" button, or by running a keeper from a server they
+control. Do not re-enable the in-browser agent for mainnet without moving the
+key somewhere it belongs.
+
+## Dependencies
+
+`ethers` 6.13.2 is loaded from cdnjs with a Subresource Integrity hash and
+`crossorigin="anonymous"`, falling back to the same-origin copy in `vendor/`
+if the CDN is unreachable or the hash does not match. Deploy `vendor/`
+alongside `index.html`.
+
+To bump the version: replace `vendor/ethers-<v>.umd.min.js`, update both the
+CDN URL and the `integrity` attribute, and recompute the hash with
+
+```bash
+echo -n "sha384-$(openssl dgst -sha384 -binary vendor/ethers-<v>.umd.min.js | openssl base64 -A)"
+```
+
+The test suite serves the vendored bytes in place of the CDN, so a stale
+`integrity` attribute fails `tests/smoke.spec.js` rather than production.
+
+## Tests
+
+`tests/` drives the real page in headless Chromium against a stubbed Arc RPC
+and a stubbed EIP-1193 wallet — no chain, no funds, no network.
+
+| File | Covers |
+| --- | --- |
+| `smoke.spec.js` | Boot, SRI, CDN fallback, tabs, config-driven markup, label/input association |
+| `validation.spec.js` | Amount parsing (incl. comma decimals) and every form's rejection paths |
+| `paylink.spec.js` | Pay-link generation and consumption |
+| `security.spec.js` | Escaping of chain- and URL-sourced strings, script pinning |
+| `chain-guard.spec.js` | Wrong-network refusal, chain add, disconnect cleanup |
+| `config.spec.js` | Unconfigured-network refusal |
+
+If Playwright cannot download its own browser, point it at an existing one:
+
+```bash
+PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chrome npm test
+```
