@@ -91,6 +91,48 @@ echo -n "sha384-$(openssl dgst -sha384 -binary vendor/ethers-<v>.umd.min.js | op
 The test suite serves the vendored bytes in place of the CDN, so a stale
 `integrity` attribute fails `tests/smoke.spec.js` rather than production.
 
+## Contracts
+
+`contracts/ArcPayV2.sol` is the payments contract deployed at the `pay` address
+in the network profile. The subscriptions and treasury contracts are deployed
+on-chain but their sources are not in this repository yet.
+
+### Review notes on ArcPayV2
+
+Read as part of wiring the frontend to it. Not an audit — an audit is still
+required before any mainnet profile is filled in.
+
+**Sound**
+
+- `claim()` and `recall()` both set `status` *before* the external call, so a
+  re-entering recipient hits the `status == 0` guard. No drain path.
+- A recipient contract that rejects the transfer cannot strand a recallable
+  payment: `claim()` reverts, but the sender can still `recall()` after the
+  window.
+- No owner, no pause, no upgrade path — nothing to trust.
+- The recall window is bounded to 60s–30 days.
+
+**Worth changing**
+
+- `splitPay()` reverts the whole batch if *any* recipient rejects the transfer
+  (`require(ok)` inside the loop). One recipient contract without a payable
+  fallback — deliberate or accidental — blocks the entire split. A pull-payment
+  pattern, or crediting failed shares for later withdrawal, removes the
+  griefing vector.
+- `splitPay()` ignores a failed dust refund (`ok2;`). The remainder is then
+  stranded in the contract permanently, and the contract balance no longer
+  equals the sum of pending recallables.
+- `sentBy()` / `receivedBy()` return unbounded arrays. Fine today; for a very
+  active address these view calls will eventually outgrow a node's response
+  limits, and a paginated variant would age better.
+
+**Used by the frontend**
+
+`sentBy()` and `receivedBy()` are the authoritative list of a user's recallable
+payments, so the Recallable tab reads them directly rather than scanning logs.
+Notes live only in `RecallableCreated`, so they are fetched best-effort and a
+missing log costs a note rather than the whole row.
+
 ## Tests
 
 `tests/` drives the real page in headless Chromium against a stubbed Arc RPC

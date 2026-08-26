@@ -665,6 +665,10 @@ const ABI = [
   'function claim(uint256 id)',
   'function recall(uint256 id)',
   'function rpays(uint256) view returns (address from, address to, uint256 amount, uint256 recallAfter, uint8 status)',
+  // The contract maintains its own per-address index; these replace a log scan.
+  'function sentBy(address) view returns (uint256[])',
+  'function receivedBy(address) view returns (uint256[])',
+  'function total() view returns (uint256)',
   'event PaymentSent(address indexed from, address indexed to, uint256 amount, string note)',
   'event RecallableCreated(uint256 indexed id, address indexed from, address indexed to, uint256 amount, uint256 recallAfter, string note)',
   'event Claimed(uint256 indexed id, address indexed to, uint256 amount)',
@@ -1251,27 +1255,41 @@ async function loadRecalls(){
   $('rcList').innerHTML = '<p class="empty"><span class="spin"></span>Reading recallable payments from the chain…</p>' + skeletons(2);
   try{
     const me = userAddress.toLowerCase();
-    const sig = iface.getEvent('RecallableCreated').topicHash;
-    const mine = addrTopic(userAddress);
-    const logs = await getLogsFor([[sig, null, mine, null], [sig, null, null, mine]]);
-    const created = parseAll(logs)
-      .filter(x => x.ev.name === 'RecallableCreated' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me));
-    if(!created.length){ $('rcList').innerHTML = '<p class="empty">No recallable payments yet — send one above.</p>'; return; }
     const c = new ethers.Contract(ARCPAY, ABI, readProvider);
-    rcItems = await inBatches(created, 10, async ({ev})=>{
-      const id = Number(ev.args.id);
-      const onchain = await c.rpays(id);
+
+    // ArcPayV2 keeps _sent/_received indexes and exposes them, so ask the
+    // contract which payments are ours instead of scanning logs and hoping
+    // they fall inside the scanned block range.
+    const [sentIds, recvIds] = await Promise.all([
+      c.sentBy(userAddress), c.receivedBy(userAddress)
+    ]);
+    const ids = [...new Set([...sentIds, ...recvIds].map(Number))].sort((a, b) => b - a);
+    if(!ids.length){ $('rcList').innerHTML = '<p class="empty"><b>Nothing here yet</b>Send a recallable payment above and it will appear.</p>'; return; }
+
+    // The note is only in the event, never in storage — fetch it best-effort.
+    // A failed or truncated log scan now costs a note, not the payment itself.
+    const notes = new Map();
+    try{
+      const sig = iface.getEvent('RecallableCreated').topicHash;
+      const mine = addrTopic(userAddress);
+      for(const { ev } of parseAll(await getLogsFor([[sig, null, mine, null], [sig, null, null, mine]]))){
+        if(ev.name === 'RecallableCreated') notes.set(Number(ev.args.id), ev.args.note);
+      }
+    }catch(_){}
+
+    // Amounts, deadlines and status come from storage, which cannot go stale.
+    rcItems = await inBatches(ids, 10, async id => {
+      const p = await c.rpays(id);
       return {
         id,
-        from: ev.args.from, to: ev.args.to,
-        amount: formatNative(ev.args.amount),
-        deadline: Number(ev.args.recallAfter),
-        note: ev.args.note,
-        status: Number(onchain.status), // 0 open 1 claimed 2 recalled
-        out: ev.args.from.toLowerCase() === me
+        from: p.from, to: p.to,
+        amount: formatNative(p.amount),
+        deadline: Number(p.recallAfter),
+        note: notes.get(id) || '',
+        status: Number(p.status),        // 0 open · 1 claimed · 2 recalled
+        out: p.from.toLowerCase() === me
       };
     });
-    rcItems.sort((a,b)=>b.id-a.id);
     renderRecalls();
   }catch(e){
     $('rcList').innerHTML = `<p class="empty">Could not read: ${escHtml((e.shortMessage||e.message||'').slice(0,80))}</p>`;
