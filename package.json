@@ -4,11 +4,20 @@
   "private": true,
   "description": "USDC-native payments, payment links, split bills, subscriptions and cross-chain messaging on Arc.",
   "scripts": {
-    "test": "playwright test",
-    "test:headed": "playwright test --headed",
-    "serve": "npx --yes http-server . -p 8080 -c-1"
+    "test": "npm run test:contracts && npm run test:ui",
+    "test:contracts": "hardhat test",
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed",
+    "compile": "hardhat compile",
+    "serve": "node tests/static-server.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1"
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@playwright/test": "^1.62.1",
+    "chai": "^4.5.0",
+    "ethers": "^6.13.2",
+    "hardhat": "^2.22.17",
+    "solc": "^0.8.24"
   }
 }
