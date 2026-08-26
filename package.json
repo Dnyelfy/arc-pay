@@ -1,0 +1,14 @@
+{
+  "name": "pay-on-arc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "USDC-native payments, payment links, split bills, subscriptions and cross-chain messaging on Arc.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "serve": "npx --yes http-server . -p 8080 -c-1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

@@ -11,90 +11,206 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --bg:#0a0a0f;--bg2:#111118;--bg3:#16161f;
-  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
-  --text:#f0eff8;--muted:#7c7b8f;--dim:#3a394a;
-  --accent:#5b6bff;--accent2:#7c4dff;--accent-glow:rgba(91,107,255,0.18);
-  --green:#1de9b6;--green-bg:rgba(29,233,182,0.08);--green-border:rgba(29,233,182,0.25);
-  --amber:#ffc107;--amber-bg:rgba(255,193,7,0.08);
-  --red:#ff5252;--red-bg:rgba(255,82,82,0.08);
+  /* Paper. The perforated receipt was the one distinctive thing here, so the
+     whole product is that object: a printed financial document. One ink, one
+     stamp red, monospace as the primary voice. */
+  --bg:#eeeae0;           /* the desk */
+  --bg2:#fbf9f4;          /* paper */
+  --bg3:#f4f0e6;          /* recessed paper */
+  --border:#d9d2c2;--border2:#b9b09c;
+  --text:#1a1813;--muted:#6b6355;--dim:#a2998a;
+  --accent:#1b3a8f;--accent2:#1b3a8f;--accent-glow:rgba(27,58,143,0.14);
+  --green:#1c6b46;--green-bg:rgba(28,107,70,0.09);--green-border:rgba(28,107,70,0.32);
+  --amber:#8a5a11;--amber-bg:rgba(138,90,17,0.10);
+  --red:#a52a2a;--red-bg:rgba(165,42,42,0.09);
   --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
+  /* spacing + shape scale — everything below picks from these, nothing invents its own */
+  --s1:6px;--s2:10px;--s3:14px;--s4:20px;--s5:28px;--s6:40px;--s7:64px;
+  --r-sm:2px;--r-md:3px;--r-lg:3px;--r-pill:2px;   /* paper has corners */
+  --ring:0 0 0 2px var(--text);
+  --shadow-lift:0 2px 0 rgba(0,0,0,0.07), 0 10px 26px -18px rgba(0,0,0,0.4);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-html{background:var(--bg);color:var(--text);font-family:var(--font);}
+html{background:var(--bg);color:var(--text);font-family:var(--mono);}
 body{min-height:100vh;display:flex;flex-direction:column;}
-body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.5;}
-.wrap{width:min(860px,92vw);margin:0 auto;position:relative;z-index:1;}
-header{padding:20px 0;border-bottom:0.5px solid var(--border);position:sticky;top:0;background:rgba(10,10,15,0.88);backdrop-filter:blur(20px);z-index:100;}
+/* paper grain */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.35;mix-blend-mode:multiply;}
+/* Headings, nav and buttons keep the display face; everything else is set in
+   the document face above. */
+.hero h1,.section-head h2,.card h2,.logo,.tab-btn,.connect-btn,.sub-row .sr-title,.stat b{font-family:var(--font);}
+.wrap{width:min(1040px,92vw);margin:0 auto;position:relative;z-index:1;}
+header{padding:20px 0;border-bottom:1px solid var(--border2);position:sticky;top:0;background:rgba(251,249,244,0.94);backdrop-filter:blur(20px);z-index:100;}
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .logo{font-weight:800;font-size:20px;letter-spacing:-0.5px;}
-.logo em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.logo em{font-style:normal;color:var(--accent);}
 .hright{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.pill{font-family:var(--mono);font-size:11.5px;padding:6px 12px;border:0.5px solid var(--border2);border-radius:99px;color:var(--muted);}
+.pill{font-family:var(--mono);font-size:12px;padding:6px 12px;border:1px solid var(--border2);border-radius:var(--r-pill);color:var(--muted);}
 .pill.gas{color:var(--green);border-color:var(--green-border);}
-.connect-btn{font-family:var(--font);font-weight:700;font-size:13px;padding:9px 16px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);cursor:pointer;transition:all .2s;}
-.connect-btn:hover{border-color:var(--accent);box-shadow:0 0 18px var(--accent-glow);}
-.connect-btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));border:none;}
+.connect-btn{font-family:var(--font);font-weight:700;font-size:13px;padding:9px 16px;border-radius:var(--r-pill);
+  border:1px solid var(--text);background:var(--bg2);color:var(--text);cursor:pointer;transition:all .15s;box-shadow:1px 1px 0 var(--text);}
+.connect-btn:hover{box-shadow:2px 2px 0 var(--text);transform:translate(-1px,-1px);}
+.connect-btn.primary{background:var(--text);color:var(--bg2);}
+.connect-btn.primary:hover{background:var(--accent);border-color:var(--accent);box-shadow:2px 2px 0 var(--accent);}
+.connect-btn:disabled{box-shadow:none;transform:none;}
 .connect-btn:disabled{opacity:0.5;cursor:wait;}
-.hero{padding:42px 0 10px;}
-.hero h1{font-size:clamp(28px,5vw,44px);font-weight:800;line-height:1.08;letter-spacing:-1px;}
-.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;}
-.hero p{color:var(--muted);font-size:14.5px;margin-top:12px;max-width:560px;line-height:1.6;}
-.tabs{display:flex;gap:4px;margin:28px 0 18px;border:0.5px solid var(--border);border-radius:14px;padding:4px;background:var(--bg2);width:fit-content;max-width:100%;overflow-x:auto;}
-.tab-btn{font-family:var(--font);font-weight:700;font-size:13px;padding:9px 16px;border-radius:10px;border:none;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;}
-.tab-btn.active{background:var(--bg3);color:var(--text);box-shadow:inset 0 0 0 0.5px var(--border2);}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin:var(--s5) 0 var(--s4);border:1px solid var(--border2);
+  border-radius:var(--r-md);padding:5px;background:var(--bg2);position:sticky;top:69px;z-index:90;
+  backdrop-filter:blur(20px);}
+.tab-btn{flex:0 1 auto;}
+.tab-btn{font-family:var(--font);font-weight:700;font-size:12.5px;padding:9px 13px;border-radius:var(--r-sm);border:none;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .2s;}
+.tab-btn.active{background:var(--text);color:var(--bg2);box-shadow:none;}
 .section{display:none;padding-bottom:50px;}
 .section.active{display:block;animation:fadein .25s ease;}
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:22px;margin-bottom:14px;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:22px;margin-bottom:14px;box-shadow:0 1px 0 rgba(0,0,0,0.05);}
 .card h2{font-size:16px;font-weight:700;margin-bottom:14px;}
-label{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:14px 0 6px;}
-input,textarea{width:100%;font-family:var(--mono);font-size:14px;padding:12px 14px;border-radius:10px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);outline:none;transition:border .2s;}
+label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin:var(--s3) 0 var(--s1);}
+input,textarea{width:100%;font-family:var(--mono);font-size:14px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--border2);background:#fff;color:var(--text);outline:none;transition:border .2s;}
 input:focus,textarea:focus{border-color:var(--accent);}
 textarea{resize:vertical;min-height:90px;line-height:1.7;}
 .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
-.hint{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:8px;line-height:1.6;}
-.status{font-family:var(--mono);font-size:12px;margin-top:12px;color:var(--muted);min-height:16px;word-break:break-all;}
+.hint{font-size:13px;color:var(--muted);margin-top:var(--s2);line-height:1.7;max-width:70ch;}
+.status{font-size:13px;margin-top:var(--s2);color:var(--muted);min-height:18px;word-break:break-word;line-height:1.6;}
 .status.ok{color:var(--green);}
 .status.err{color:var(--red);}
 .status a{color:var(--accent);}
 /* receipt — Pay on Arc'ın imzası */
-.receipt{background:var(--bg3);border:0.5px dashed var(--border2);border-radius:4px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;position:relative;margin-top:14px;}
+.receipt{background:#fff;border:1px dashed var(--border2);border-radius:var(--r-sm);padding:18px 20px;font-family:var(--mono);font-size:12.5px;position:relative;margin-top:14px;}
 .receipt::before,.receipt::after{content:'';position:absolute;left:0;right:0;height:8px;background-image:radial-gradient(circle at 8px 0px, var(--bg) 5px, transparent 5px);background-size:16px 8px;}
 .receipt::before{top:-1px;}
 .receipt::after{bottom:-1px;transform:rotate(180deg);}
 .receipt .r-line{display:flex;justify-content:space-between;gap:12px;padding:5px 0;color:var(--muted);}
 .receipt .r-line b{color:var(--text);font-weight:500;text-align:right;word-break:break-all;}
-.receipt .r-amt{font-size:22px;color:var(--green);text-align:center;padding:10px 0;letter-spacing:1px;}
+.receipt .r-amt{font-size:22px;color:var(--text);text-align:center;padding:10px 0;letter-spacing:1px;}
 .receipt .r-sep{border-top:1px dashed var(--border2);margin:8px 0;}
 .receipt .r-foot{text-align:center;color:var(--dim);font-size:10.5px;letter-spacing:0.15em;text-transform:uppercase;padding-top:8px;}
 .gasbig{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
 .gasbig b{font-size:clamp(34px,7vw,54px);font-family:var(--mono);font-weight:500;color:var(--green);}
 .gasbig span{font-family:var(--mono);font-size:13px;color:var(--muted);}
-.preset{font-family:var(--mono);font-size:11.5px;padding:7px 12px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;}
+.preset{font-family:var(--mono);font-size:11.5px;padding:7px 12px;border-radius:var(--r-pill);border:0.5px solid var(--border2);background:var(--bg3);color:var(--muted);cursor:pointer;}
 .preset.active{border-color:var(--green-border);color:var(--green);background:var(--green-bg);}
-.cost{font-family:var(--mono);font-size:13px;color:var(--text);margin-top:14px;line-height:1.9;}
+.cost{font-size:13.5px;color:var(--muted);margin-top:var(--s3);line-height:1.9;}
 .cost b{color:var(--green);}
-.empty{font-family:var(--mono);font-size:12.5px;color:var(--dim);padding:18px 0;text-align:center;}
 /* cross-chain lane görseli */
 .lane{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted);margin:6px 0 2px;flex-wrap:wrap;}
-.lane .chip{padding:6px 12px;border-radius:99px;border:0.5px solid var(--border2);background:var(--bg3);color:var(--text);}
+.lane .chip{padding:6px 12px;border-radius:var(--r-pill);border:1px solid var(--border2);background:var(--bg2);color:var(--text);}
 .lane .chip.arc{border-color:var(--accent);color:var(--accent);}
 .lane .arrow{color:var(--accent2);font-size:16px;}
-footer{margin-top:auto;border-top:0.5px solid var(--border);padding:20px 0;font-family:var(--mono);font-size:11.5px;color:var(--dim);}
+footer{margin-top:auto;border-top:1px solid var(--border2);padding:var(--s5) 0;font-size:13px;color:var(--muted);line-height:1.9;}
 footer a{color:var(--muted);text-decoration:none;}
 footer a:hover{color:var(--accent);}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg3);border:0.5px solid var(--border2);border-radius:12px;padding:12px 20px;font-family:var(--mono);font-size:12.5px;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg2);border:1px solid var(--text);border-radius:var(--r-md);padding:12px 20px;font-family:var(--mono);font-size:12.5px;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;}
 .toast.show{opacity:1;}
+
+/* ── focus: visible for keyboards, invisible for mouse ── */
+:focus{outline:none;}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--r-sm);}
+.tab-btn:focus-visible,.connect-btn:focus-visible,.preset:focus-visible{box-shadow:var(--ring);}
+input:focus-visible,textarea:focus-visible{border-color:var(--accent);box-shadow:var(--ring);}
+.skip{position:absolute;left:-9999px;top:0;background:var(--bg3);color:var(--text);padding:10px 16px;border-radius:var(--r-sm);z-index:400;}
+.skip:focus{left:12px;top:12px;}
+
+/* ── eyebrow / section rhythm ── */
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:var(--s3);display:flex;align-items:center;gap:8px;}
+.eyebrow::before{content:'';width:22px;height:1px;background:var(--border2);}
+.lede{color:var(--muted);font-size:15.5px;line-height:1.7;max-width:56ch;}
+.section-head{margin:var(--s6) 0 var(--s4);}
+.section-head h2{font-size:20px;font-weight:800;letter-spacing:-0.4px;}
+.section-head p{color:var(--muted);font-size:14.5px;margin-top:var(--s2);line-height:1.7;max-width:64ch;}
+.card-sub{color:var(--muted);font-size:13px;line-height:1.6;margin:-6px 0 var(--s3);}
+
+/* ── hero ── */
+.hero{padding:var(--s7) 0 var(--s3);}
+body.engaged .hero{display:none;}
+.logo{cursor:pointer;}
+.logo:hover em{opacity:0.8;}
+.hero h1{font-size:clamp(32px,6vw,54px);font-weight:800;line-height:1.04;letter-spacing:-1.6px;max-width:16ch;}
+.hero h1 em{font-style:normal;color:var(--accent);}
+.hero .lede{margin-top:var(--s4);}
+.hero-cta{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s5);}
+.btn-lg{font-size:14px;padding:13px 22px;}
+
+/* ── the economics line: the argument for this chain, in one glance.
+   This was three boxes of monospace prose sitting between the headline and
+   the tabs — the numbers earn their place, the packaging did not. ── */
+.econ{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s4);margin-top:var(--s5);
+  font-size:13.5px;color:var(--muted);line-height:1.9;}
+.copy:hover{color:var(--accent);background:var(--bg3);}
+.econ i{font-style:normal;}
+.econ b{font-family:var(--mono);font-weight:500;font-size:15px;color:var(--text);letter-spacing:-0.2px;}
+.econ b.good{color:var(--green);}
+.econ .sep{color:var(--dim);}
+
+/* ── stat row ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:var(--s2);margin-bottom:var(--s3);}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s3) var(--s4);}
+.stat b{display:block;font-family:var(--mono);font-size:22px;font-weight:500;letter-spacing:-0.5px;}
+.stat span{display:block;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-top:var(--s1);}
+
+/* ── empty + loading states ── */
+.empty{font-size:13.5px;color:var(--muted);padding:var(--s5) var(--s4);text-align:center;line-height:1.7;
+  border:1px dashed var(--border2);border-radius:var(--r-md);background:transparent;}
+.empty b{display:block;color:var(--muted);font-weight:400;margin-bottom:var(--s1);}
+.skeleton{height:64px;border-radius:var(--r-md);margin-bottom:var(--s2);
+  background:linear-gradient(90deg,var(--bg3) 25%,#fff 50%,var(--bg3) 75%);
+  background-size:240% 100%;animation:shimmer 1.3s linear infinite;}
+@keyframes shimmer{from{background-position:140% 0}to{background-position:-40% 0}}
+.spin{display:inline-block;width:11px;height:11px;border:1.5px solid var(--border2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite;vertical-align:-1px;margin-right:7px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── subscription rows ── */
+.sub-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s3) var(--s4);
+  margin-bottom:var(--s2);display:flex;align-items:center;gap:var(--s3);justify-content:space-between;flex-wrap:wrap;transition:border-color .2s;}
+.sub-row:hover{border-color:var(--border2);}
+.sub-row.due{border-color:var(--amber);background:var(--amber-bg);}
+.sub-row .sr-main{min-width:0;flex:1;}
+.sub-row .sr-title{font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.sub-row .sr-meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px;line-height:1.6;word-break:break-word;}
+.sub-row .sr-amt{font-family:var(--mono);font-size:15px;color:var(--text);white-space:nowrap;}
+.badge{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:var(--r-pill);border:1px solid var(--border2);color:var(--muted);}
+.badge.due{color:var(--amber);border-color:var(--amber);background:var(--amber-bg);}
+.badge.live{color:var(--green);border-color:var(--green-border);background:var(--green-bg);}
+.badge.off{color:var(--dim);}
+
+/* ── billing agent ── */
+.agent-id{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--border);
+  border:0.5px solid var(--border);border-radius:var(--r-md);overflow:hidden;margin-bottom:var(--s4);}
+.agent-id > div{background:var(--bg2);padding:var(--s3) var(--s4);}
+.agent-id .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);}
+.agent-id .v{font-family:var(--mono);font-size:13px;margin-top:5px;word-break:break-all;display:flex;align-items:center;gap:6px;}
+.term-wrap{border:1px solid var(--text);border-radius:var(--r-md);overflow:hidden;background:#fff;margin-top:var(--s3);}
+.term-bar{display:flex;align-items:center;gap:8px;padding:9px var(--s3);border-bottom:1px dashed var(--border2);
+  background:var(--bg3);font-family:var(--mono);font-size:11px;color:var(--muted);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:none;}
+.dot.on{background:var(--green);box-shadow:0 0 0 3px var(--green-bg);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{50%{box-shadow:0 0 0 6px transparent}}
+#kpTerm{padding:var(--s3) var(--s4);font-family:var(--mono);font-size:12px;line-height:1.85;
+  max-height:340px;min-height:150px;overflow-y:auto;white-space:pre-wrap;}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:var(--s2);margin-top:var(--s3);}
+.step{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:var(--s3) var(--s4);}
+.step b{display:block;font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:0.1em;margin-bottom:6px;}
+.step span{font-size:13.5px;color:var(--muted);line-height:1.7;}
+
+/* ── copyable address ── */
+.copy{font-family:var(--mono);font-size:12px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 5px;border-radius:6px;}
+.copy:hover{color:var(--accent);background:var(--bg3);}
+
+.card{transition:border-color .2s;}
+.card.feature{border-color:var(--text);box-shadow:var(--shadow-lift);}
+.connect-btn:disabled{opacity:0.45;cursor:not-allowed;}
+
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header>
   <div class="wrap">
-    <div class="logo">Pay <em>on Arc</em></div>
+    <div class="logo" role="button" tabindex="0" onclick="showOverview()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showOverview();}" title="Back to the overview">Pay <em>on Arc</em></div>
     <div class="hright">
+      <span class="pill" id="netPill">—</span>
       <span class="pill gas" id="gasPill">⛽ — gwei</span>
       <span class="pill" id="balPill" style="display:none;"></span>
       <button class="connect-btn primary" id="connBtn" onclick="connect()">Connect wallet</button>
@@ -102,42 +218,59 @@ footer a:hover{color:var(--accent);}
   </div>
 </header>
 
-<div class="wrap">
-  <div class="hero">
-    <h1>Money moves like a message.<br/><em>USDC-native, on Arc.</em></h1>
-    <p>Send a payment, drop someone a pay-link, split a bill across 20 wallets, or bridge a message to Ethereum — every action lands on-chain for about a cent. Gas is USDC here; what you see is what you pay.</p>
-  </div>
+<div class="wrap" id="main">
+  <section class="hero">
+    <div class="eyebrow">Recurring payments, native to the chain</div>
+    <h1>Subscriptions that <em>collect themselves.</em></h1>
+    <p class="lede">A $5 monthly plan cannot survive where collecting it costs more than it earns. Here a charge costs the rounding error below — so a subscription can pull its own money, every period, with nobody clicking anything.</p>
+    <div class="hero-cta">
+      <button class="connect-btn primary btn-lg" onclick="go('subs')">Start a subscription</button>
+      <button class="connect-btn btn-lg" onclick="go('agent')">Meet the billing agent</button>
+    </div>
 
-  <div class="tabs">
-    <button class="tab-btn active" onclick="go('pay',this)">💸 Pay & Link</button>
-    <button class="tab-btn" onclick="go('split',this)">🔀 Split</button>
-    <button class="tab-btn" onclick="go('recall',this)">⏳ Recallable</button>
-    <button class="tab-btn" onclick="go('bridge',this)">🌉 Cross-Chain</button>
-    <button class="tab-btn" onclick="go('agent',this)">🤖 Billing Agent</button>
-    <button class="tab-btn" onclick="go('history',this)">🧾 Receipts</button>
-    <button class="tab-btn" onclick="go('subs',this)">🔁 Subscriptions</button>
-    <button class="tab-btn" onclick="go('treasury',this);pythAuto()">💶 Treasury</button>
+    <p class="econ">
+      <i>One charge <b class="good" id="econCost">—</b></i>
+      <span class="sep">·</span>
+      <i>a year of monthly billing <b id="econYear">—</b></i>
+      <span class="sep">·</span>
+      <i>gas paid in <b>USDC</b></i>
+    </p>
+  </section>
+
+  <div class="tabs" role="tablist" aria-label="Pay on Arc features">
+    <button class="tab-btn active" role="tab" aria-selected="true"  aria-controls="sec-subs"     id="tab-subs"     onclick="go('subs',this)">Subscriptions</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-agent"    id="tab-agent"    tabindex="-1" onclick="go('agent',this)">Billing Agent</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-pay"      id="tab-pay"      tabindex="-1" onclick="go('pay',this)">Pay &amp; Link</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-split"    id="tab-split"    tabindex="-1" onclick="go('split',this)">Split</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-recall"   id="tab-recall"   tabindex="-1" onclick="go('recall',this)">Recallable</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-bridge"   id="tab-bridge"   tabindex="-1" onclick="go('bridge',this)">Cross-Chain</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-treasury" id="tab-treasury" tabindex="-1" onclick="go('treasury',this)">Treasury</button>
+    <button class="tab-btn"        role="tab" aria-selected="false" aria-controls="sec-history"  id="tab-history"  tabindex="-1" onclick="go('history',this)">Receipts</button>
   </div>
 
   <!-- PAY -->
-  <div class="section active" id="sec-pay">
+  <div class="section" id="sec-pay" role="tabpanel" aria-labelledby="tab-pay">
+    <div class="section-head">
+      <h2>Send money with something to say</h2>
+      <p>A payment carries a note on-chain, so the receipt explains itself later. Or turn it into a pay-link: the other side opens it, sees exactly what is being asked for, and pays in one tap.</p>
+    </div>
     <div class="card" id="incomingCard" style="display:none;border-color:var(--green-border);">
-      <h2>📥 Payment request</h2>
+      <h2>Payment request</h2>
       <div class="receipt" id="incomingReceipt"></div>
       <div class="row"><button class="connect-btn primary" onclick="payIncoming()">Pay this request</button></div>
       <div class="status" id="incomingStatus"></div>
     </div>
     <div class="card">
       <h2>Send a payment</h2>
-      <label>Recipient address</label>
+      <label for="payTo">Recipient address</label>
       <input id="payTo" placeholder="0x…" spellcheck="false"/>
-      <label>Amount (USDC)</label>
+      <label for="payAmt">Amount (USDC)</label>
       <input id="payAmt" placeholder="1.50" inputmode="decimal"/>
-      <label>Note — written on-chain with the payment</label>
+      <label for="payNote">Note — written on-chain with the payment</label>
       <input id="payNote" placeholder="coffee ☕ / invoice #42 / gm" maxlength="120"/>
       <div class="row">
         <button class="connect-btn primary" onclick="sendPay()">Send payment</button>
-        <button class="connect-btn" onclick="makeLink()">Create pay-link instead 🔗</button>
+        <button class="connect-btn" onclick="makeLink()">Create pay-link instead</button>
       </div>
       <div class="status" id="payStatus"></div>
       <div class="hint">A pay-link prefills this form for whoever opens it — share it anywhere, they pay in one tap.</div>
@@ -145,14 +278,18 @@ footer a:hover{color:var(--accent);}
   </div>
 
   <!-- SPLIT -->
-  <div class="section" id="sec-split">
-    <div class="card">
+  <div class="section" id="sec-split" role="tabpanel" aria-labelledby="tab-split">
+    <div class="section-head">
+      <h2>One transaction, up to twenty wallets</h2>
+      <p>Equal shares, a single confirmation, and a separate on-chain receipt for every recipient. Rounding dust comes back to you rather than being stranded in the contract.</p>
+    </div>
+    <div class="card feature">
       <h2>Split a payment</h2>
-      <label>Recipients — one address per line (max 20)</label>
+      <label for="splitTo">Recipients — one address per line (max 20)</label>
       <textarea id="splitTo" placeholder="0xabc…&#10;0xdef…&#10;0x123…" spellcheck="false"></textarea>
-      <label>Total amount to split (USDC)</label>
+      <label for="splitAmt">Total amount to split (USDC)</label>
       <input id="splitAmt" placeholder="10.00" inputmode="decimal"/>
-      <label>Note</label>
+      <label for="splitNote">Note</label>
       <input id="splitNote" placeholder="team payout / dinner split" maxlength="120"/>
       <div class="cost" id="splitPreview"></div>
       <div class="row"><button class="connect-btn primary" onclick="sendSplit()">Split & send</button></div>
@@ -162,22 +299,25 @@ footer a:hover{color:var(--accent);}
   </div>
 
   <!-- RECALLABLE -->
-  <div class="section" id="sec-recall">
-    <div class="card">
+  <div class="section" id="sec-recall" role="tabpanel" aria-labelledby="tab-recall">
+    <div class="section-head">
+      <h2>Payments you can take back</h2>
+      <p>Inspired by Miden's P2IDR notes. The recipient can claim at any moment; if they never do, the money returns to you once the window closes. The cure for sending to the wrong address.</p>
+    </div>
+    <div class="card feature">
       <h2>Send a recallable payment</h2>
-      <p class="hint" style="margin:0 0 4px;">Inspired by Miden's P2IDR notes: the recipient can claim any time, but if they don't, you can pull the funds back after the window closes. No more "wrong address" panic.</p>
-      <label>Recipient address</label>
+      <label for="rcTo">Recipient address</label>
       <input id="rcTo" placeholder="0x…" spellcheck="false"/>
-      <label>Amount (USDC)</label>
+      <label for="rcAmt">Amount (USDC)</label>
       <input id="rcAmt" placeholder="1.00" inputmode="decimal"/>
-      <label>Recall window — you can take it back after</label>
-      <div class="row" style="margin-top:4px;">
+      <label id="rcWindowLabel">Recall window — you can take it back after</label>
+      <div class="row" style="margin-top:4px;" role="group" aria-labelledby="rcWindowLabel">
         <button class="preset" data-s="300" onclick="pickWindow(this)">5 min</button>
         <button class="preset active" data-s="3600" onclick="pickWindow(this)">1 hour</button>
         <button class="preset" data-s="86400" onclick="pickWindow(this)">24 hours</button>
         <button class="preset" data-s="604800" onclick="pickWindow(this)">7 days</button>
       </div>
-      <label>Note</label>
+      <label for="rcNote">Note</label>
       <input id="rcNote" placeholder="claim me before I change my mind ⏳" maxlength="120"/>
       <div class="row"><button class="connect-btn primary" onclick="sendRecallable()">Send recallable</button></div>
       <div class="status" id="rcStatus"></div>
@@ -190,19 +330,23 @@ footer a:hover{color:var(--accent);}
   </div>
 
   <!-- CROSS-CHAIN (Chainlink CCIP) -->
-  <div class="section" id="sec-bridge">
-    <div class="card">
-      <h2>🌉 Send a message across chains</h2>
+  <div class="section" id="sec-bridge" role="tabpanel" aria-labelledby="tab-bridge">
+    <div class="section-head">
+      <h2>One transaction, two chains</h2>
+      <p>A message leaves Arc through the Chainlink CCIP router, crosses a live lane, and runs code in a contract on the far side — where it is stored and emits an event you can read back below. The fee is paid in USDC, like everything else here.</p>
+    </div>
+    <div class="card feature">
+      <h2>Send a message across chains</h2>
       <p class="hint" style="margin:0 0 8px;">Powered by Chainlink CCIP. Your message leaves Arc Testnet and is delivered to Ethereum Sepolia — one of the few live cross-chain lanes on Arc. The fee is paid in USDC, like everything else here.</p>
       <div class="lane">
-        <span class="chip arc">Arc Testnet</span>
+        <span class="chip arc" id="ccLaneSrc">—</span>
         <span class="arrow">→</span>
-        <span class="chip">Ethereum Sepolia</span>
+        <span class="chip" id="ccLane">—</span>
         <span style="color:var(--dim);">· via Chainlink CCIP</span>
       </div>
-      <label>Destination — your receiver contract on Sepolia</label>
-      <input id="ccReceiver" value="0x8D77a145a238Aa36f2b20027b353cF1E981B569F" spellcheck="false"/>
-      <label>Message — travels cross-chain with your transaction</label>
+      <label for="ccReceiver">Destination — your receiver contract on the far chain</label>
+      <input id="ccReceiver" value="" spellcheck="false"/>
+      <label for="ccMsg">Message — travels cross-chain with your transaction</label>
       <input id="ccMsg" placeholder="gm from Arc 👋" maxlength="120"/>
       <div class="cost" id="ccFee">Fee: <span style="color:var(--muted)">—</span> <button class="connect-btn" style="padding:6px 12px;font-size:12px;margin-left:6px;" onclick="estimateCcipFee()">Estimate fee</button></div>
       <div class="row"><button class="connect-btn primary" onclick="sendCcip()">Send cross-chain →</button></div>
@@ -210,8 +354,8 @@ footer a:hover{color:var(--accent);}
       <div class="hint">Delivery to Sepolia takes a few minutes while Chainlink's network finalizes it. Your message lands in the receiver contract, gets stored, and emits an event.</div>
     </div>
     <div class="card">
-      <h2>📨 Messages on Ethereum Sepolia</h2>
-      <p class="hint" style="margin:0 0 4px;">Read straight from your receiver contract <a href="https://sepolia.etherscan.io/address/0x8D77a145a238Aa36f2b20027b353cF1E981B569F" target="_blank" rel="noreferrer" style="color:var(--accent)">0x8D77…569F ↗</a> — every message that crossed from Arc and actually landed here.</p>
+      <h2>Messages on <span id="ccDestName">—</span></h2>
+      <p class="hint" style="margin:0 0 4px;">Read straight from your receiver contract <a id="ccReceiverLink" href="#" target="_blank" rel="noreferrer" style="color:var(--accent)">—</a> — every message that crossed from Arc and actually landed here.</p>
       <div class="row" style="margin-top:8px;"><button class="connect-btn" onclick="loadSepoliaMessages()">↻ Load messages on Sepolia</button></div>
       <div id="ccInbox"><p class="empty">Send a cross-chain message, wait a few minutes, then load — this proves it arrived and ran code on the other chain.</p></div>
     </div>
@@ -224,40 +368,65 @@ footer a:hover{color:var(--accent);}
         → The contract stores the message and emits an event<br/>
         → One transaction, two chains, real app-to-app messaging
       </div>
-      <div class="hint" style="margin-top:12px;">Arc Router <span style="color:var(--muted)">0xdE4E…eab8</span> · Sepolia receiver <span style="color:var(--muted)">0x8D77…569F</span> · fee paid in USDC.</div>
+      <div class="hint" style="margin-top:12px;">Arc Router <span style="color:var(--muted)" id="ccRouterAddr">—</span> · receiver <span style="color:var(--muted)" id="ccReceiverAddr">—</span> · fee paid in USDC.</div>
     </div>
   </div>
 
   <!-- BILLING AGENT -->
-  <div class="section" id="sec-agent">
-    <div class="card">
-      <h2>🤖 Billing agent — subscriptions collect themselves</h2>
-      <div class="hint" style="margin-bottom:14px;">A tiny on-chain worker with its own wallet, living in this page. While it's online, it watches the subscription contract and charges every due subscription <b>by itself</b> — no MetaMask, no clicks, no human. Subscribers pay while everyone sleeps. Burner key stays in this browser · testnet only.</div>
-      <div class="receipt" style="margin-bottom:12px;">
-        Agent address: <b id="kpAddr" style="word-break:break-all;">—</b><br/>
-        <span style="color:var(--muted);font-size:12px;">Gas balance: <b id="kpGas">—</b> · pays only tx fees; subscription money flows subscriber → merchant directly</span>
+  <div class="section" id="sec-agent" role="tabpanel" aria-labelledby="tab-agent">
+    <div class="section-head">
+      <h2>A worker that bills for you</h2>
+      <p>A tiny on-chain agent with its own wallet, living in this page. While it is online it watches the subscription contract and charges every due subscription <b>by itself</b> — no MetaMask prompt, no click, no human. It pays only transaction fees; the subscription money always moves subscriber → merchant directly and never touches the agent.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><b>EVERY 15s</b><span>Reads the subscription table, picking up anything created since the last pass.</span></div>
+      <div class="step"><b>WHEN DUE</b><span>Batches the due ones into a single charge, and retries individually if one reverts.</span></div>
+      <div class="step"><b>ON EMPTY</b><span>Says so once and idles, instead of burning gas on a failing call every tick.</span></div>
+    </div>
+
+    <div class="card feature" style="margin-top:var(--s4);">
+      <div class="agent-id">
+        <div>
+          <div class="k">Agent address</div>
+          <div class="v"><span id="kpAddr">—</span><button class="copy" onclick="copyText($('kpAddr').textContent,this)" title="Copy">⧉</button></div>
+        </div>
+        <div>
+          <div class="k">Gas balance</div>
+          <div class="v" id="kpGas">—</div>
+        </div>
       </div>
-      <div class="row" style="align-items:flex-end;">
+      <div class="row" style="align-items:flex-end;margin-top:0;">
         <div style="flex:1;min-width:140px;">
-          <label>Fund gas (USDC)</label>
+          <label for="kpFundAmt">Fund gas (USDC)</label>
           <input id="kpFundAmt" placeholder="1.00" inputmode="decimal"/>
         </div>
-        <button class="connect-btn" onclick="kpFund()">⛽ Fund gas</button>
+        <button class="connect-btn" onclick="kpFund()">Fund gas</button>
       </div>
       <div class="row" style="margin-top:12px;">
         <button class="connect-btn primary" onclick="kpStart()">▶ Start agent</button>
         <button class="connect-btn" onclick="kpStop()">■ Stop</button>
-        <button class="connect-btn" onclick="kpSweep()">💸 Sweep gas back</button>
-        <button class="connect-btn" onclick="kpReset()">🗑 New key</button>
+        <button class="connect-btn" onclick="kpSweep()">Sweep gas back</button>
+        <button class="connect-btn" onclick="kpReset()">Delete key</button>
       </div>
-      <div class="status" id="kpState" style="margin-top:12px;">agent offline</div>
-      <div id="kpTerm" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.8;max-height:240px;overflow-y:auto;white-space:pre-wrap;margin-top:12px;"><span style="color:var(--muted)">[boot]</span> Agent terminal ready. Fund gas, press Start, and leave this tab open.</div>
+      <div class="term-wrap">
+        <div class="term-bar">
+          <span class="dot" id="kpDot"></span>
+          <span id="kpState">agent offline</span>
+        </div>
+        <div id="kpTerm">[boot] Agent terminal ready. Fund gas, press Start, and leave this tab open.</div>
+      </div>
       <div class="status" id="kpStatus"></div>
+      <div class="hint">The burner key lives in this browser's local storage and nowhere else — that is why this feature is testnet-only and switches itself off on any other network.</div>
     </div>
   </div>
 
   <!-- HISTORY -->
-  <div class="section" id="sec-history">
+  <div class="section" id="sec-history" role="tabpanel" aria-labelledby="tab-history">
+    <div class="section-head">
+      <h2>Every payment, straight from the chain</h2>
+      <p>Read out of the contract's own events and filtered to your address — nothing here comes from a server that could be wrong.</p>
+    </div>
     <div class="card">
       <h2>Your receipts</h2>
       <div class="row" style="margin-top:0;"><button class="connect-btn" onclick="loadHistory()">↻ Load from chain</button></div>
@@ -265,21 +434,32 @@ footer a:hover{color:var(--accent);}
     </div>
   </div>
   <!-- SUBSCRIPTIONS -->
-  <div class="section" id="sec-subs">
-    <div class="card">
-      <h2>🔁 Start a subscription</h2>
-      <label>Merchant / recipient address — who gets paid</label>
+  <div class="section active" id="sec-subs" role="tabpanel" aria-labelledby="tab-subs">
+    <div class="section-head">
+      <h2>Recurring payments, settled on-chain</h2>
+      <p>No money leaves your wallet up front. You approve USDC once, and each period is pulled only when it comes due — by the merchant, by you, or by the billing agent. Cancel in one transaction, any time, from either side.</p>
+    </div>
+
+    <div class="stats" id="subStats" style="display:none;">
+      <div class="stat"><b id="statSubs">—</b><span>active subscribers</span></div>
+      <div class="stat"><b id="statMrr" style="color:var(--green)">—</b><span>est. monthly revenue</span></div>
+      <div class="stat"><b id="statNext">—</b><span>next charge due</span></div>
+    </div>
+
+    <div class="card feature">
+      <h2>Start a subscription</h2>
+      <label for="subTo">Merchant / recipient address — who gets paid</label>
       <input id="subTo" placeholder="0x…" spellcheck="false"/>
-      <label>Amount per period (USDC)</label>
+      <label for="subAmt">Amount per period (USDC)</label>
       <input id="subAmt" placeholder="10.00" inputmode="decimal"/>
-      <label>Billing period</label>
-      <div class="row" id="subIntervalRow">
+      <label id="subIntervalLabel">Billing period</label>
+      <div class="row" id="subIntervalRow" role="group" aria-labelledby="subIntervalLabel">
         <button class="connect-btn" data-sec="300" onclick="pickInterval(this)">5 min (test)</button>
         <button class="connect-btn" data-sec="86400" onclick="pickInterval(this)">Daily</button>
         <button class="connect-btn" data-sec="604800" onclick="pickInterval(this)">Weekly</button>
         <button class="connect-btn primary" data-sec="2592000" onclick="pickInterval(this)">Monthly</button>
       </div>
-      <label>Label — shows in both parties' lists</label>
+      <label for="subLabel">Label — shows in both parties' lists</label>
       <input id="subLabel" placeholder="Pro plan / kira / DAO aidatı" maxlength="64"/>
       <div class="row">
         <button class="connect-btn primary" onclick="createSub()">Subscribe — first period charged now</button>
@@ -289,27 +469,36 @@ footer a:hover{color:var(--accent);}
     </div>
 
     <div class="card">
-      <h2>📤 My subscriptions <span style="font-weight:400;font-size:12px;color:var(--muted)">(I pay)</span></h2>
-      <div id="mySubsList"><p class="empty">Connect & load to see subscriptions you're paying.</p></div>
-      <div class="row"><button class="connect-btn" onclick="loadSubs()">↻ Load</button></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:var(--s3);">
+        <h2 style="margin:0;">Paying out <span style="font-weight:400;font-size:12px;color:var(--muted)">— subscriptions you fund</span></h2>
+        <button class="connect-btn" onclick="loadSubs()">↻ Refresh</button>
+      </div>
+      <div id="mySubsList"><p class="empty"><b>Nothing yet</b>Connect your wallet and refresh to see what you are paying for.</p></div>
     </div>
 
     <div class="card">
-      <h2>📥 My subscribers <span style="font-weight:400;font-size:12px;color:var(--muted)">(they pay me)</span></h2>
-      <div id="myMerchList"><p class="empty">Connect & load to see who's subscribed to you.</p></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:var(--s3);">
+        <h2 style="margin:0;">Getting paid <span style="font-weight:400;font-size:12px;color:var(--muted)">— people subscribed to you</span></h2>
+        <button class="connect-btn" onclick="loadSubs()">↻ Refresh</button>
+      </div>
+      <div id="myMerchList"><p class="empty"><b>No subscribers yet</b>Share your address with a plan label and they will show up here.</p></div>
       <div class="row">
-        <button class="connect-btn primary" onclick="collectDue()">💰 Collect all due payments</button>
-        <button class="connect-btn" id="autoCollectBtn" onclick="toggleAutoCollect()">🤖 Auto-collector: OFF</button>
+        <button class="connect-btn primary" onclick="collectDue()">Collect everything due</button>
+        <button class="connect-btn" id="autoCollectBtn" onclick="toggleAutoCollect()">Auto-collector: OFF</button>
       </div>
       <div class="status" id="merchStatus"></div>
-      <div class="hint">Anyone can trigger a due charge — leave the auto-collector on and this page becomes your billing robot, charging subscribers the moment payments come due.</div>
+      <div class="hint">A due charge can be triggered by anyone — that is what makes it automatable. Leave the auto-collector on and this tab bills for you; hand the job to the <a href="#agent" onclick="go('agent');return false;" style="color:var(--accent)">billing agent</a> and you can close the tab entirely.</div>
     </div>
   </div>
 
   <!-- TREASURY -->
-  <div class="section" id="sec-treasury">
-    <div class="card">
-      <h2>💶 Treasury agent — reads Pyth, holds the mix</h2>
+  <div class="section" id="sec-treasury" role="tabpanel" aria-labelledby="tab-treasury">
+    <div class="section-head">
+      <h2>A treasury that rebalances itself</h2>
+      <p>It holds USDC and EURC and tries to keep a fixed split of value between them. Every EUR/USD tick moves that split, so the agent reads the Pyth feed and — once drift breaks the band — pays any keeper a bonus to settle it back on-chain.</p>
+    </div>
+    <div class="card feature">
+      <h2>Treasury agent — reads Pyth, holds the mix</h2>
       <div class="hint" style="margin-bottom:16px;">The treasury holds two stablecoins — <b>USDC</b> and <b>EURC</b> — and tries to keep a fixed value split between them. Every EUR/USD tick shifts that split, so the agent reads the <b>Pyth EUR/USD</b> feed and, when the mix drifts out of band, lets any keeper settle it back on-chain. Live oracle · Arc Testnet.</div>
       <div class="lane" style="margin-bottom:2px;">
         <span class="chip">Pyth oracle</span><span class="arrow">→</span>
@@ -349,7 +538,7 @@ footer a:hover{color:var(--accent);}
       <div class="hint" style="margin-bottom:14px;">A ratio needs both sides, so seed the treasury with USDC and EURC. Then anyone can be the <b>keeper</b>: supply the short side, receive the other plus a small bonus — that incentive is what makes the agent run without a babysitter.</div>
       <div class="row" style="align-items:flex-end;margin-top:0;">
         <div style="flex:1;min-width:150px;">
-          <label>Deposit amount</label>
+          <label for="tDepAmt">Deposit amount</label>
           <input id="tDepAmt" placeholder="50.00" inputmode="decimal"/>
         </div>
         <button class="connect-btn" onclick="treasuryDeposit('usdc')">↓ Fund USDC</button>
@@ -360,7 +549,7 @@ footer a:hover{color:var(--accent);}
         <button class="connect-btn" onclick="treasuryScan()">↻ Refresh health</button>
       </div>
       <div class="status" id="tStatus"></div>
-      <div class="hint" style="margin-top:12px;">Rebalance pulls a fresh Pyth update on-chain (tiny USDC gas fee), refuses if confidence is too wide, and only moves funds when drift breaks the band. Agent <a href="https://testnet.arcscan.app/address/0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53" target="_blank" rel="noreferrer" style="color:var(--accent)">0xC99f…3eA53 ↗</a> · Pyth <span style="color:var(--muted)">0x2880…7B43</span>.</div>
+      <div class="hint" style="margin-top:12px;">Rebalance pulls a fresh Pyth update on-chain (tiny USDC gas fee), refuses if confidence is too wide, and only moves funds when drift breaks the band. Agent <a id="tAgentLink" href="#" target="_blank" rel="noreferrer" style="color:var(--accent)">—</a> · Pyth <span style="color:var(--muted)" id="tPythAddr">—</span>.</div>
     </div>
   </div>
 
@@ -368,19 +557,107 @@ footer a:hover{color:var(--accent);}
 
 <footer>
   <div class="wrap">
-    Built by <a href="https://x.com/Dnyelfy" target="_blank" rel="noreferrer">@Dnyelfy</a> · contract <a id="cLink" href="#" target="_blank" rel="noreferrer">Pay on Arc</a> · Arc Testnet<br/>
+    Built by <a href="https://x.com/Dnyelfy" target="_blank" rel="noreferrer">@Dnyelfy</a> · contract <a id="cLink" href="#" target="_blank" rel="noreferrer">Pay on Arc</a> · <span id="footNet">—</span><br/>
     More Arc tools → <a href="https://arc-wallet-check.vercel.app" target="_blank" rel="noreferrer">Wallet Check</a> · <a href="https://arcvote-one.vercel.app/arc-dapp.html" target="_blank" rel="noreferrer">Quest Hub</a> · <a href="https://arc-agent-forge.vercel.app" target="_blank" rel="noreferrer">Agent Forge</a>
   </div>
 </footer>
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<!-- ethers loader: CDN pinned with Subresource Integrity, same-origin vendored copy as fallback.
+     A payments UI must never execute an unverified crypto library, and must never fail silently. -->
 <script>
-const ARCPAY = '0x418E2c81b0E90C98780494c62C73452657CA979b'; // Pay on Arc payment contract (V2)
-const RPC = 'https://rpc.testnet.arc.network';
-const CHAIN_ID = 5042002;
-const SCAN = 'https://testnet.arcscan.app';
+window.__ethersReady = new Promise(function(resolve, reject){
+  window.__ethersOk = function(){ resolve(); };
+  window.__ethersFail = function(){
+    var s = document.createElement('script');
+    s.src = 'vendor/ethers-6.13.2.umd.min.js';
+    s.onload = function(){ resolve(); };
+    s.onerror = function(){ reject(new Error('ethers could not be loaded from CDN or vendor/')); };
+    document.head.appendChild(s);
+  };
+});
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"
+        integrity="sha384-gpR0Q6Hx/O+uevlbpbANbS0LWjbejPV1sqD/8w422l/fW8whGY0EPmKw3uG7ACYP"
+        crossorigin="anonymous"
+        onload="__ethersOk()" onerror="__ethersFail()"></script>
+<script>
+/* ============================================================================
+   NETWORK CONFIG — the single place to switch between Arc Testnet and mainnet.
+   Flip ACTIVE_NETWORK and fill in the mainnet contract addresses; nothing else
+   in this file hardcodes a chain, an RPC, an explorer or a contract address.
+   ========================================================================= */
+const NETWORKS = {
+  'arc-testnet': {
+    label: 'Arc Testnet',
+    testnet: true,
+    chainId: 5042002,
+    rpc: 'https://rpc.testnet.arc.network',
+    scan: 'https://testnet.arcscan.app',
+    native: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+    contracts: {
+      pay:        '0x418E2c81b0E90C98780494c62C73452657CA979b', // Pay on Arc payments (V2)
+      subs:       '0x015f65293c936741588dC03ebDD1A193D62535eC', // Subscriptions
+      treasury:   '0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53', // Treasury agent
+      usdc:       '0x3600000000000000000000000000000000000000', // USDC (ERC-20 view of native)
+      eurc:       '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a',
+      ccipRouter: '0xdE4E7FED43FAC37EB21aA0643d9852f75332eab8',
+      pyth:       '0x2880aB155794e7179c9eE2e38200202908C17B43'
+    },
+    ccip: {
+      destSelector: '16015286601757825753',   // Ethereum Sepolia CCIP chain selector
+      destName: 'Ethereum Sepolia',
+      receiver: '0x8D77a145a238Aa36f2b20027b353cF1E981B569F',
+      destRpc:  'https://ethereum-sepolia-rpc.publicnode.com',
+      destScan: 'https://sepolia.etherscan.io'
+    },
+    pythEurUsdId: '0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b'
+  },
+
+  /* Mainnet profile. Every '' below is a deliberate blank: the app refuses to
+     start on a network whose contracts are not filled in, so a half-configured
+     mainnet build cannot quietly send real money to the zero address. */
+  'arc-mainnet': {
+    label: 'Arc',
+    testnet: false,
+    chainId: 0,
+    rpc: '',
+    scan: '',
+    native: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+    contracts: { pay:'', subs:'', treasury:'', usdc:'', eurc:'', ccipRouter:'', pyth:'' },
+    ccip: { destSelector:'', destName:'Ethereum', receiver:'', destRpc:'', destScan:'' },
+    pythEurUsdId: '0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b'
+  }
+};
+
+// ── Switch networks here ──────────────────────────────────────────────────
+const ACTIVE_NETWORK = 'arc-testnet';
+// ──────────────────────────────────────────────────────────────────────────
+
+const NET = NETWORKS[ACTIVE_NETWORK];
+const IS_TESTNET = NET.testnet;
+
+/* Config sanity check — surfaces a misconfigured build instead of letting it
+   run against address(0). Returns a list of missing keys. */
+function configProblems(){
+  const missing = [];
+  if(!NET.rpc) missing.push('rpc');
+  if(!NET.scan) missing.push('scan');
+  if(!NET.chainId) missing.push('chainId');
+  for(const k of ['pay','subs','treasury','usdc','eurc','ccipRouter','pyth']){
+    if(!NET.contracts[k]) missing.push('contracts.' + k);
+  }
+  for(const k of ['destSelector','receiver','destRpc','destScan']){
+    if(!NET.ccip[k]) missing.push('ccip.' + k);
+  }
+  return missing;
+}
+
+const ARCPAY = NET.contracts.pay;
+const RPC = NET.rpc;
+const CHAIN_ID = NET.chainId;
+const SCAN = NET.scan;
 const ABI = [
   'function pay(address to, string note) payable',
   'function splitPay(address[] to, string note) payable',
@@ -396,50 +673,208 @@ const ABI = [
 const $ = id => document.getElementById(id);
 const short = a => a ? a.slice(0,6) + '…' + a.slice(-4) : '';
 let provider = null, signer = null, userAddress = null;
-const readProvider = new ethers.JsonRpcProvider(RPC);
-const iface = new ethers.Interface(ABI);
+// Built in boot(), once the ethers library has actually loaded.
+let readProvider = null, iface = null, sepoliaProvider = null;
+let booted = false;
 
-document.getElementById('cLink').href = `${SCAN}/address/${ARCPAY}`;
+/* Amount parsing — one place, used by every form.
+   Accepts "1,50" as well as "1.50" (a comma decimal used to silently parse as
+   1 and send the wrong amount) and rejects anything that is not > 0. */
+function parseAmount(raw){
+  const t = String(raw ?? '').trim().replace(/\s/g,'').replace(',','.');
+  if(!/^\d*\.?\d+$/.test(t)) return null;
+  const n = Number(t);
+  if(!isFinite(n) || n <= 0) return null;
+  return t;                       // normalized decimal string, safe for parseUnits
+}
+/* Amounts are sent to 6-decimal token contracts; more precision than that is
+   truncated on-chain, so refuse it here instead of surprising the user. */
+function toUnits6(t){ return ethers.parseUnits(Number(t).toFixed(6), 6); }
+/* Native gas token (USDC on Arc). Decimals come from the network profile so a
+   mainnet with a different native precision needs no code change. */
+function parseNative(t){ return ethers.parseUnits(String(t), NET.native.decimals); }
+function formatNative(v){ return ethers.formatUnits(v, NET.native.decimals); }
+
+function fatal(msg){
+  document.body.insertAdjacentHTML('afterbegin',
+    `<div style="background:var(--red-bg);border-bottom:1px solid var(--red);color:var(--red);
+      font-family:var(--mono);font-size:13px;padding:14px 18px;text-align:center;position:relative;z-index:200;">${escHtml(msg)}</div>`);
+}
+
+/* Every network read gets a deadline. Without this an unresponsive explorer or
+   oracle leaves the UI stuck on "Reading…" with no way out. */
+async function fetchJson(url, ms = 12000){
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try{
+    const r = await fetch(url, { signal: ctl.signal });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+/* Run an async mapper over a list with bounded concurrency — keeps a few
+   hundred contract reads off a single serial chain without flooding the RPC. */
+async function inBatches(items, size, fn){
+  const out = [];
+  for(let i = 0; i < items.length; i += size){
+    out.push(...await Promise.all(items.slice(i, i + size).map(fn)));
+  }
+  return out;
+}
+
+async function copyText(t, btn){
+  const v = (t || '').trim();
+  if(!v || v === '—') return;
+  try{
+    await navigator.clipboard.writeText(v);
+    if(btn){ const old = btn.textContent; btn.textContent = '✓'; setTimeout(()=>{ btn.textContent = old; }, 1200); }
+    toast('✓ Copied');
+  }catch{ toast('Could not copy'); }
+}
+
+function requireReady(statusId){
+  if(booted) return true;
+  const m = 'Still loading — one moment.';
+  statusId ? setStatus(statusId, m, 'err') : toast(m);
+  return false;
+}
 
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200); }
 function setStatus(id,msg,cls){ const s=$(id); s.innerHTML=msg||''; s.className='status'+(cls?' '+cls:''); }
 
+/* Tab order is the product argument: subscriptions first, the agent that runs
+   them second, everything else after. */
+const TABS = ['subs','agent','pay','split','recall','bridge','treasury','history'];
+
+function showOverview(){
+  document.body.classList.remove('engaged');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function go(name, btn){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  $('sec-'+name).classList.add('active');
-  if(btn) btn.classList.add('active');
+  if(!TABS.includes(name)) name = TABS[0];
+  document.body.classList.add('engaged');
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected','false');
+    b.tabIndex = -1;
+  });
+  $('sec-' + name).classList.add('active');
+  const tab = btn || $('tab-' + name);
+  if(tab){
+    tab.classList.add('active');
+    tab.setAttribute('aria-selected','true');
+    tab.tabIndex = 0;
+  }
+  // Keep the tab in the URL so a demo can be linked straight to a feature.
+  if(location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
+  if(name === 'treasury') pythAuto();
+}
+
+/* Arrow-key navigation, as a tablist is expected to behave. */
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  const tabs = [...document.querySelectorAll('.tab-btn')];
+  const i = tabs.indexOf(document.activeElement);
+  if(i === -1) return;
+  let next = null;
+  if(e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+  else if(e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+  else if(e.key === 'Home') next = tabs[0];
+  else if(e.key === 'End') next = tabs[tabs.length - 1];
+  if(!next) return;
+  e.preventDefault();
+  next.focus();
+  next.click();
+});
+
+/* Ask the wallet to sit on the configured chain, adding it if unknown.
+   Throws if it ends up anywhere else — callers must not send a transaction
+   after that. This is the guard that stops funds going out on the wrong
+   network when the user switches chains after connecting. */
+const wrongNetworkError = why =>
+  new Error(`Wrong network — switch your wallet to ${NET.label} (chain ${CHAIN_ID}).` + (why ? ` (${why})` : ''));
+
+/* Ask the wallet itself, not a cached provider. A provider built on the old
+   chain throws its own "network changed: X => Y" — accurate but meaningless to
+   the person holding the funds, and it fires before we can say anything useful. */
+async function walletChainId(){
+  return Number(await window.ethereum.request({ method:'eth_chainId' }));
+}
+
+async function rebindSigner(){
+  provider = new ethers.BrowserProvider(window.ethereum);
+  signer = await provider.getSigner();
+  userAddress = await signer.getAddress();
+}
+
+async function ensureChain(){
+  if(!window.ethereum) throw new Error('No wallet found');
+  const want = '0x' + CHAIN_ID.toString(16);
+
+  if(await walletChainId() !== CHAIN_ID){
+    try{
+      await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: want }] });
+    }catch(e){
+      if(e.code === 4902){
+        await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{
+          chainId: want, chainName: NET.label,
+          nativeCurrency: NET.native,
+          rpcUrls:[RPC], blockExplorerUrls:[SCAN]
+        }]});
+      } else {
+        throw wrongNetworkError(e.code === 4001 ? 'request rejected' : (e.shortMessage || e.message || ''));
+      }
+    }
+    if(await walletChainId() !== CHAIN_ID) throw wrongNetworkError();
+    await rebindSigner();
+    return;
+  }
+
+  // Right chain, but the cached provider may have been built on another one.
+  if(provider){
+    let stale = false;
+    try{ stale = Number((await provider.getNetwork()).chainId) !== CHAIN_ID; }
+    catch{ stale = true; }
+    if(stale) await rebindSigner();
+  }
+}
+
+/* Every write path calls this instead of using `signer` directly, so a chain
+   switch between connecting and clicking Send can never slip through. */
+async function requireSigner(statusId){
+  if(!requireReady(statusId)) return null;
+  if(!signer){ await connect(); if(!signer) return null; }
+  try{
+    await ensureChain();
+    return signer;
+  }catch(e){
+    const m = e.shortMessage || e.message || 'Wrong network';
+    statusId ? setStatus(statusId, m, 'err') : toast(m);
+    return null;
+  }
 }
 
 async function connect(){
-  if(!window.ethereum){ toast('MetaMask not found'); return; }
+  if(!requireReady()) return;
+  if(!window.ethereum){ toast('No wallet found — install MetaMask'); return; }
+  const btn = $('connBtn');
+  btn.disabled = true;
   try{
     provider = new ethers.BrowserProvider(window.ethereum);
-    const net = await provider.getNetwork();
-    if(Number(net.chainId) !== CHAIN_ID){
-      try{
-        await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x'+CHAIN_ID.toString(16) }] });
-      }catch(e){
-        if(e.code === 4902){
-          await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{
-            chainId:'0x'+CHAIN_ID.toString(16), chainName:'Arc Testnet',
-            nativeCurrency:{ name:'USDC', symbol:'USDC', decimals:18 },
-            rpcUrls:[RPC], blockExplorerUrls:[SCAN]
-          }]});
-        } else throw e;
-      }
-      provider = new ethers.BrowserProvider(window.ethereum);
-    }
+    await ensureChain();
     signer = await provider.getSigner();
     userAddress = await signer.getAddress();
     $('connBtn').textContent = short(userAddress) + ' ✕';
     $('connBtn').onclick = disconnect;
     $('connBtn').title = 'Disconnect';
     const bal = await provider.getBalance(userAddress);
-    $('balPill').textContent = Number(ethers.formatEther(bal)).toFixed(2) + ' USDC';
+    $('balPill').textContent = Number(formatNative(bal)).toFixed(2) + ' ' + NET.native.symbol;
     $('balPill').style.display = '';
     toast('✓ Connected');
-  }catch(e){ toast('Connect failed: ' + (e.shortMessage||e.message||'').slice(0,60)); }
+  }catch(e){ toast('Connect failed: ' + (e.shortMessage||e.message||'').slice(0,80)); }
+  finally{ btn.disabled = false; }
 }
 
 async function disconnect(){
@@ -451,38 +886,58 @@ async function disconnect(){
   $('balPill').style.display = 'none';
   $('histList').innerHTML = '<p class="empty">Connect your wallet and load — every Pay on Arc payment you sent or received, straight from the chain.</p>';
   $('rcList').innerHTML = '<p class="empty">Connect & load — outgoing payments show a recall countdown, incoming ones a claim button.</p>';
+  $('mySubsList').innerHTML = '<p class="empty"><b>Nothing yet</b>Connect your wallet and refresh to see what you are paying for.</p>';
+  $('myMerchList').innerHTML = '<p class="empty"><b>No subscribers yet</b>Share your address with a plan label and they will show up here.</p>';
+  $('subStats').style.display = 'none';
   rcItems = [];
+  merchSubsCache = [];
+  // Anything that signs on a timer must stop the moment the wallet goes away.
+  if(autoCollectTimer){ clearInterval(autoCollectTimer); autoCollectTimer = null; $('autoCollectBtn').textContent = 'Auto-collector: OFF'; }
   toast('Disconnected');
 }
 window.ethereum?.on?.('accountsChanged', accs => { accs.length ? connect() : disconnect(); });
+// A chain switch invalidates the cached provider/signer; rebind or drop them.
+window.ethereum?.on?.('chainChanged', () => {
+  if(!userAddress) return;
+  provider = null; signer = null;
+  if(autoCollectTimer){ clearInterval(autoCollectTimer); autoCollectTimer = null; $('autoCollectBtn').textContent = 'Auto-collector: OFF'; }
+  toast('Network changed — reconnecting…');
+  connect();
+});
+// Leave no signing loop running behind a closed tab.
+window.addEventListener('pagehide', () => {
+  if(autoCollectTimer) clearInterval(autoCollectTimer);
+  if(kpTimer) clearInterval(kpTimer);
+  if(pythTimer) clearInterval(pythTimer);
+});
 
 function validAddr(a){ try{ return ethers.getAddress(a.trim()); }catch{ return null; } }
 
 async function sendPay(toOverride, amtOverride, noteOverride, statusId){
   const sid = statusId || 'payStatus';
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner(sid)) return;
   const to = validAddr(toOverride ?? $('payTo').value);
-  const amt = (amtOverride ?? $('payAmt').value).toString().trim().replace(',','.');
+  const amt = parseAmount(amtOverride ?? $('payAmt').value);
   const note = (noteOverride ?? $('payNote').value).trim();
   if(!to){ setStatus(sid,'Enter a valid recipient address.','err'); return; }
-  if(!(parseFloat(amt) > 0)){ setStatus(sid,'Enter an amount above zero.','err'); return; }
+  if(!amt){ setStatus(sid,'Enter an amount above zero.','err'); return; }
   try{
     setStatus(sid,'Waiting for wallet confirmation…');
     const c = new ethers.Contract(ARCPAY, ABI, signer);
-    const tx = await c.pay(to, note, { value: ethers.parseEther(amt) });
+    const tx = await c.pay(to, note, { value: parseNative(amt) });
     setStatus(sid,'⏳ Sending… ' + short(tx.hash));
     const rc = await tx.wait();
-    setStatus(sid,`✅ Paid ${amt} USDC to ${short(to)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view receipt ↗</a>`,'ok');
+    setStatus(sid,`✅ Paid ${escHtml(amt)} ${NET.native.symbol} to ${short(to)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view receipt ↗</a>`,'ok');
     toast('✓ Payment sent');
   }catch(e){ setStatus(sid,'Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
 }
 
 function makeLink(){
   const to = validAddr($('payTo').value);
-  const amt = $('payAmt').value.trim().replace(',','.');
+  const amt = parseAmount($('payAmt').value);
   const note = $('payNote').value.trim();
   if(!to){ setStatus('payStatus','Pay-link needs a valid recipient address.','err'); return; }
-  if(!(parseFloat(amt) > 0)){ setStatus('payStatus','Pay-link needs an amount.','err'); return; }
+  if(!amt){ setStatus('payStatus','Pay-link needs an amount above zero.','err'); return; }
   const u = new URL(location.origin + location.pathname);
   u.searchParams.set('to', to);
   u.searchParams.set('amt', amt);
@@ -496,67 +951,81 @@ let incoming = null;
 function checkIncoming(){
   const p = new URLSearchParams(location.search);
   const to = p.get('to') ? validAddr(p.get('to')) : null;
-  const amt = p.get('amt');
-  if(!to || !(parseFloat(amt) > 0)) return;
-  incoming = { to, amt: parseFloat(amt).toString(), note: (p.get('note')||'').slice(0,120) };
+  const amt = parseAmount(p.get('amt'));
+  if(!to || !amt) return;
+  incoming = { to, amt, note: (p.get('note')||'').slice(0,120) };
   $('incomingReceipt').innerHTML = `
     <div class="r-foot">payment request</div>
-    <div class="r-amt">${incoming.amt} USDC</div>
+    <div class="r-amt">${escHtml(incoming.amt)} ${escHtml(NET.native.symbol)}</div>
     <div class="r-sep"></div>
     <div class="r-line"><span>to</span><b>${incoming.to}</b></div>
     ${incoming.note ? `<div class="r-line"><span>note</span><b>${escHtml(incoming.note)}</b></div>` : ''}
-    <div class="r-line"><span>network</span><b>Arc Testnet · gas in USDC</b></div>`;
+    <div class="r-line"><span>network</span><b>${escHtml(NET.label)} · gas in ${escHtml(NET.native.symbol)}</b></div>`;
   $('incomingCard').style.display = '';
 }
 function payIncoming(){ if(incoming) sendPay(incoming.to, incoming.amt, incoming.note, 'incomingStatus'); }
-function escHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function previewSplit(){
   const lines = $('splitTo').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  const amt = parseFloat($('splitAmt').value.replace(',','.'));
+  const amt = Number(parseAmount($('splitAmt').value));
   if(!lines.length || !(amt > 0)){ $('splitPreview').textContent=''; return; }
-  $('splitPreview').innerHTML = `${lines.length} recipient(s) · <b>${(amt/lines.length).toFixed(4)} USDC</b> each`;
+  $('splitPreview').innerHTML = `${lines.length} recipient(s) · <b>${(amt/lines.length).toFixed(4)} ${escHtml(NET.native.symbol)}</b> each`;
 }
 $('splitTo').addEventListener('input', previewSplit);
 $('splitAmt').addEventListener('input', previewSplit);
 
 async function sendSplit(){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('splitStatus')) return;
   const lines = $('splitTo').value.split('\n').map(s=>s.trim()).filter(Boolean);
   const addrs = lines.map(validAddr);
   if(!lines.length || lines.length > 20){ setStatus('splitStatus','Between 1 and 20 recipients.','err'); return; }
   const bad = addrs.findIndex(a=>!a);
   if(bad !== -1){ setStatus('splitStatus',`Line ${bad+1} is not a valid address.`,'err'); return; }
-  const amt = $('splitAmt').value.trim().replace(',','.');
-  if(!(parseFloat(amt) > 0)){ setStatus('splitStatus','Enter a total amount above zero.','err'); return; }
+  const amt = parseAmount($('splitAmt').value);
+  if(!amt){ setStatus('splitStatus','Enter a total amount above zero.','err'); return; }
   const note = $('splitNote').value.trim();
   try{
     setStatus('splitStatus','Waiting for wallet confirmation…');
     const c = new ethers.Contract(ARCPAY, ABI, signer);
-    const tx = await c.splitPay(addrs, note, { value: ethers.parseEther(amt) });
+    const tx = await c.splitPay(addrs, note, { value: parseNative(amt) });
     setStatus('splitStatus','⏳ Splitting… ' + short(tx.hash));
     const rc = await tx.wait();
-    setStatus('splitStatus',`✅ Split ${amt} USDC across ${addrs.length} wallets · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view tx ↗</a>`,'ok');
+    setStatus('splitStatus',`✅ Split ${escHtml(amt)} ${NET.native.symbol} across ${addrs.length} wallets · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view tx ↗</a>`,'ok');
     toast('✓ Split sent');
   }catch(e){ setStatus('splitStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
 }
 
 /* ── header gas pill ── */
+/* Rough gas for one subscription charge — an ERC-20 transferFrom plus a
+   storage write. Used only to price the hero's economics strip. */
+const CHARGE_GAS = 80000n;
+
+function money(n){
+  if(n >= 1)     return '$' + n.toFixed(2);
+  if(n >= 0.01)  return '$' + n.toFixed(3);
+  if(n >= 0.0001)return '$' + n.toFixed(5);
+  return '<$0.0001';
+}
+
 async function refreshGas(){
+  if(!readProvider) return;
   try{
     const fee = await readProvider.send('eth_gasPrice', []);
-    $('gasPill').textContent = '⛽ ' + (Number(BigInt(fee)) / 1e9).toFixed(2) + ' gwei';
+    const wei = BigInt(fee);
+    $('gasPill').textContent = '⛽ ' + (Number(wei) / 1e9).toFixed(2) + ' gwei';
+    // Native gas token is USDC here, so the gas cost *is* the dollar cost.
+    const perCharge = Number(formatNative(wei * CHARGE_GAS));
+    $('econCost').textContent = money(perCharge);
+    $('econYear').textContent = money(perCharge * 12);
   }catch(_){}
 }
-refreshGas();
-setInterval(refreshGas, 15000);
-
 /* ── CROSS-CHAIN (Chainlink CCIP) ──
    Arc Testnet → Ethereum Sepolia, message-only send.
    Router called directly from the browser — no extra contract to deploy.
    Fee paid in native USDC (feeToken = address(0)). */
-const CCIP_ROUTER = '0xdE4E7FED43FAC37EB21aA0643d9852f75332eab8';
-const SEPOLIA_SELECTOR = '16015286601757825753'; // Ethereum Sepolia CCIP chain selector
+const CCIP_ROUTER = NET.contracts.ccipRouter;
+const CCIP_DEST_SELECTOR = NET.ccip.destSelector;
 const CCIP_ABI = [
   'function getFee(uint64 destinationChainSelector, (bytes receiver, bytes data, (address token, uint256 amount)[] tokenAmounts, address feeToken, bytes extraArgs) message) view returns (uint256)',
   'function ccipSend(uint64 destinationChainSelector, (bytes receiver, bytes data, (address token, uint256 amount)[] tokenAmounts, address feeToken, bytes extraArgs) message) payable returns (bytes32)'
@@ -564,10 +1033,10 @@ const CCIP_ABI = [
 
 // Our receiver contract, deployed on Ethereum Sepolia.
 // Messages sent from Pay on Arc land here, get stored, and emit an event.
-const SEPOLIA_RECEIVER = '0x8D77a145a238Aa36f2b20027b353cF1E981B569F';
-const SEPOLIA_RPC = 'https://ethereum-sepolia-rpc.publicnode.com';
-const SEPOLIA_SCAN = 'https://sepolia.etherscan.io';
-const sepoliaProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
+const DEST_RECEIVER = NET.ccip.receiver;
+const DEST_RPC = NET.ccip.destRpc;
+const DEST_SCAN = NET.ccip.destScan;
+const DEST_NAME = NET.ccip.destName;
 const RECEIVER_ABI = [
   'function total() view returns (uint256)',
   'function getMessages(uint256 offset, uint256 limit) view returns ((bytes32 messageId, uint64 sourceChain, address sender, string text, uint256 receivedAt)[])'
@@ -590,13 +1059,13 @@ function buildCcipMessage(receiver, text){
 }
 
 async function estimateCcipFee(){
-  const receiver = validAddr($('ccReceiver').value) || SEPOLIA_RECEIVER;
-  if(!receiver){ setStatus('ccStatus','Connect your wallet or enter a destination address first.','err'); return null; }
+  if(!requireReady('ccStatus')) return null;
+  const receiver = validAddr($('ccReceiver').value) || DEST_RECEIVER;
   try{
     const router = new ethers.Contract(CCIP_ROUTER, CCIP_ABI, readProvider);
     const msg = buildCcipMessage(receiver, $('ccMsg').value.trim() || 'gm from Arc');
-    const fee = await router.getFee(SEPOLIA_SELECTOR, msg);
-    $('ccFee').innerHTML = `Fee: <b>${Number(ethers.formatEther(fee)).toFixed(6)} USDC</b> <span style="color:var(--muted)">· paid on Arc</span>`;
+    const fee = await router.getFee(CCIP_DEST_SELECTOR, msg);
+    $('ccFee').innerHTML = `Fee: <b>${Number(formatNative(fee)).toFixed(6)} ${NET.native.symbol}</b> <span style="color:var(--muted)">· paid on ${escHtml(NET.label)}</span>`;
     setStatus('ccStatus','');
     return fee;
   }catch(e){
@@ -606,18 +1075,21 @@ async function estimateCcipFee(){
 }
 
 async function sendCcip(){
-  if(!signer){ await connect(); if(!signer) return; }
-  const receiver = validAddr($('ccReceiver').value) || SEPOLIA_RECEIVER;
-  if(!receiver){ setStatus('ccStatus','Enter a destination address, or leave empty to use the Pay on Arc receiver contract.','err'); return; }
+  if(!await requireSigner('ccStatus')) return;
+  const receiver = validAddr($('ccReceiver').value) || DEST_RECEIVER;
   const text = $('ccMsg').value.trim() || 'gm from Arc';
   try{
     setStatus('ccStatus','Estimating fee…');
     const router = new ethers.Contract(CCIP_ROUTER, CCIP_ABI, signer);
     const msg = buildCcipMessage(receiver, text);
-    const fee = await router.getFee(SEPOLIA_SELECTOR, msg);
-    $('ccFee').innerHTML = `Fee: <b>${Number(ethers.formatEther(fee)).toFixed(6)} USDC</b> <span style="color:var(--muted)">· paid on Arc</span>`;
+    const fee = await router.getFee(CCIP_DEST_SELECTOR, msg);
+    $('ccFee').innerHTML = `Fee: <b>${Number(formatNative(fee)).toFixed(6)} ${NET.native.symbol}</b> <span style="color:var(--muted)">· paid on ${escHtml(NET.label)}</span>`;
     setStatus('ccStatus','Waiting for wallet confirmation…');
-    const tx = await router.ccipSend(SEPOLIA_SELECTOR, msg, { value: fee });
+    // The router quotes a live fee; it can tick up between the quote and the
+    // send, which reverts the transaction. Overpay 2% — the router refunds the
+    // unused remainder to the sender.
+    const funded = fee + (fee / 50n);
+    const tx = await router.ccipSend(CCIP_DEST_SELECTOR, msg, { value: funded });
     setStatus('ccStatus','⏳ Sending across chains… ' + short(tx.hash));
     const rc = await tx.wait();
     setStatus('ccStatus',`✅ Sent from Arc → Ethereum Sepolia · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">Arc tx ↗</a> · <a href="https://ccip.chain.link" target="_blank" rel="noreferrer">track on CCIP ↗</a><br/><span style="color:var(--muted)">Delivery takes a few minutes. Once it lands, hit "Load messages on Sepolia" below to see it stored in your receiver contract.</span>`,'ok');
@@ -627,10 +1099,11 @@ async function sendCcip(){
 
 /* Read messages that have landed in the receiver contract on Sepolia */
 async function loadSepoliaMessages(){
+  if(!requireReady()) return;
   const box = $('ccInbox');
-  box.innerHTML = '<p class="empty">Reading your receiver contract on Ethereum Sepolia…</p>';
+  box.innerHTML = `<p class="empty"><span class="spin"></span>Reading your receiver contract on ${escHtml(DEST_NAME)}…</p>`;
   try{
-    const c = new ethers.Contract(SEPOLIA_RECEIVER, RECEIVER_ABI, sepoliaProvider);
+    const c = new ethers.Contract(DEST_RECEIVER, RECEIVER_ABI, sepoliaProvider);
     const list = await c.getMessages(0, 20); // newest first
     if(!list.length){
       box.innerHTML = '<p class="empty">No messages have landed yet. After you send one, give CCIP a few minutes, then load again.</p>';
@@ -651,32 +1124,61 @@ async function loadSepoliaMessages(){
   }
 }
 
-/* ── LOG OKUMA: önce ArcScan API, olmazsa RPC (son 50k blok) ── */
-async function getAllLogs(){
-  try{
-    let items = [], pp = null;
-    for(let p = 0; p < 5; p++){
-      let url = `${SCAN}/api/v2/addresses/${ARCPAY}/logs`;
-      if(pp) url += '?' + new URLSearchParams(pp).toString();
-      const r = await fetch(url);
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      const j = await r.json();
-      items = items.concat(j.items || []);
-      if(!j.next_page_params) break;
-      pp = j.next_page_params;
+/* ── LOG READING ──────────────────────────────────────────────────────────
+   Both `from` and `to` are indexed on these events, so the chain can filter
+   for us. The old path pulled *every* log the contract ever emitted (capped at
+   5 explorer pages) and filtered in JS — on a busy contract a user's own
+   payments fall off the end of that window and simply stop showing up.
+   Primary path: indexed topic queries over a chunked block range.
+   Fallback: the explorer's address-log feed, as before. */
+const LOG_LOOKBACK_BLOCKS = 500000;
+const LOG_CHUNK_BLOCKS = 50000;
+const addrTopic = a => ethers.zeroPadValue(ethers.getAddress(a), 32);
+
+async function queryLogs(topicSets){
+  const latest = await readProvider.getBlockNumber();
+  const from = Math.max(0, latest - LOG_LOOKBACK_BLOCKS);
+  const out = [];
+  for(const topics of topicSets){
+    for(let start = from; start <= latest; start += LOG_CHUNK_BLOCKS){
+      const end = Math.min(start + LOG_CHUNK_BLOCKS - 1, latest);
+      const logs = await readProvider.getLogs({ address: ARCPAY, topics, fromBlock: start, toBlock: end });
+      out.push(...logs.map(l => ({ topics:[...l.topics], data:l.data,
+        transactionHash:l.transactionHash, blockNumber:l.blockNumber, index:l.index })));
     }
-    return items.map((l,i)=>({
-      topics: (l.topics || []).filter(Boolean),
-      data: l.data || '0x',
-      transactionHash: l.transaction_hash || l.tx_hash || '',
-      blockNumber: Number(l.block_number || 0),
-      index: l.index ?? i
-    }));
-  }catch(e){
-    const latest = await readProvider.getBlockNumber();
-    const logs = await readProvider.getLogs({ address: ARCPAY, fromBlock: Math.max(0, latest - 50000), toBlock: 'latest' });
-    return logs.map(l=>({ topics:[...l.topics], data:l.data, transactionHash:l.transactionHash, blockNumber:l.blockNumber, index:l.index }));
   }
+  // The same log can match two topic sets (e.g. paying yourself) — de-duplicate.
+  const seen = new Set();
+  return out.filter(l => {
+    const k = l.transactionHash + ':' + l.index;
+    if(seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
+
+async function explorerLogs(){
+  let items = [], pp = null;
+  for(let p = 0; p < 5; p++){
+    let url = `${SCAN}/api/v2/addresses/${ARCPAY}/logs`;
+    if(pp) url += '?' + new URLSearchParams(pp).toString();
+    const j = await fetchJson(url);
+    items = items.concat(j.items || []);
+    if(!j.next_page_params) break;
+    pp = j.next_page_params;
+  }
+  return items.map((l,i)=>({
+    topics: (l.topics || []).filter(Boolean),
+    data: l.data || '0x',
+    transactionHash: l.transaction_hash || l.tx_hash || '',
+    blockNumber: Number(l.block_number || 0),
+    index: l.index ?? i
+  }));
+}
+
+/* topicSets: array of topic filters to run; falls back to a full address scan. */
+async function getLogsFor(topicSets){
+  try{ return await queryLogs(topicSets); }
+  catch(e){ return await explorerLogs(); }
 }
 function parseAll(logs){
   return logs.map(l=>{
@@ -687,18 +1189,22 @@ function parseAll(logs){
 
 /* ── HISTORY ── */
 async function loadHistory(){
+  if(!requireReady()) return;
   if(!userAddress){ await connect(); if(!userAddress) return; }
-  $('histList').innerHTML = '<p class="empty">Reading PaymentSent events from chain…</p>';
+  $('histList').innerHTML = '<p class="empty"><span class="spin"></span>Reading payment events from the chain…</p>' + skeletons(2);
   try{
     const me = userAddress.toLowerCase();
-    const all = parseAll(await getAllLogs())
+    const sig = iface.getEvent('PaymentSent').topicHash;
+    const mine = addrTopic(userAddress);
+    const logs = await getLogsFor([[sig, mine, null], [sig, null, mine]]);
+    const all = parseAll(logs)
       .filter(x => x.ev.name === 'PaymentSent' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me))
       .sort((a,b)=>b.l.blockNumber - a.l.blockNumber);
     if(!all.length){ $('histList').innerHTML = '<p class="empty">No receipts yet — send your first payment in the Pay tab.</p>'; return; }
     $('histList').innerHTML = all.slice(0,30).map(({ev,l})=>{
       const out = ev.args.from.toLowerCase() === me;
       return `<div class="receipt">
-        <div class="r-amt" style="color:${out?'var(--text)':'var(--green)'}">${out?'−':'+'}${Number(ethers.formatEther(ev.args.amount)).toFixed(4)} USDC</div>
+        <div class="r-amt" style="color:${out?'var(--text)':'var(--green)'}">${out?'−':'+'}${Number(formatNative(ev.args.amount)).toFixed(4)} ${NET.native.symbol}</div>
         <div class="r-sep"></div>
         <div class="r-line"><span>${out?'to':'from'}</span><b>${short(out?ev.args.to:ev.args.from)}</b></div>
         ${ev.args.note ? `<div class="r-line"><span>note</span><b>${escHtml(ev.args.note)}</b></div>` : ''}
@@ -720,16 +1226,16 @@ function pickWindow(btn){
 }
 
 async function sendRecallable(){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('rcStatus')) return;
   const to = validAddr($('rcTo').value);
-  const amt = $('rcAmt').value.trim().replace(',','.');
+  const amt = parseAmount($('rcAmt').value);
   const note = $('rcNote').value.trim();
   if(!to){ setStatus('rcStatus','Enter a valid recipient address.','err'); return; }
-  if(!(parseFloat(amt) > 0)){ setStatus('rcStatus','Enter an amount above zero.','err'); return; }
+  if(!amt){ setStatus('rcStatus','Enter an amount above zero.','err'); return; }
   try{
     setStatus('rcStatus','Waiting for wallet confirmation…');
     const c = new ethers.Contract(ARCPAY, ABI, signer);
-    const tx = await c.payRecallable(to, rcWindow, note, { value: ethers.parseEther(amt) });
+    const tx = await c.payRecallable(to, rcWindow, note, { value: parseNative(amt) });
     setStatus('rcStatus','⏳ Sending… ' + short(tx.hash));
     const rc = await tx.wait();
     setStatus('rcStatus',`✅ Recallable sent — recipient can claim now, you can recall after the window · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
@@ -740,27 +1246,31 @@ async function sendRecallable(){
 
 let rcItems = [];
 async function loadRecalls(){
+  if(!requireReady()) return;
   if(!userAddress){ await connect(); if(!userAddress) return; }
-  $('rcList').innerHTML = '<p class="empty">Reading recallable payments from chain…</p>';
+  $('rcList').innerHTML = '<p class="empty"><span class="spin"></span>Reading recallable payments from the chain…</p>' + skeletons(2);
   try{
     const me = userAddress.toLowerCase();
-    const created = parseAll(await getAllLogs())
+    const sig = iface.getEvent('RecallableCreated').topicHash;
+    const mine = addrTopic(userAddress);
+    const logs = await getLogsFor([[sig, null, mine, null], [sig, null, null, mine]]);
+    const created = parseAll(logs)
       .filter(x => x.ev.name === 'RecallableCreated' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me));
     if(!created.length){ $('rcList').innerHTML = '<p class="empty">No recallable payments yet — send one above.</p>'; return; }
     const c = new ethers.Contract(ARCPAY, ABI, readProvider);
-    rcItems = await Promise.all(created.map(async ({ev})=>{
+    rcItems = await inBatches(created, 10, async ({ev})=>{
       const id = Number(ev.args.id);
       const onchain = await c.rpays(id);
       return {
         id,
         from: ev.args.from, to: ev.args.to,
-        amount: ethers.formatEther(ev.args.amount),
+        amount: formatNative(ev.args.amount),
         deadline: Number(ev.args.recallAfter),
         note: ev.args.note,
         status: Number(onchain.status), // 0 open 1 claimed 2 recalled
         out: ev.args.from.toLowerCase() === me
       };
-    }));
+    });
     rcItems.sort((a,b)=>b.id-a.id);
     renderRecalls();
   }catch(e){
@@ -804,7 +1314,7 @@ function renderRecalls(){
 setInterval(()=>{ if($('sec-recall').classList.contains('active')) renderRecalls(); }, 1000);
 
 async function claimPay(id){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner()) return;
   try{
     const c = new ethers.Contract(ARCPAY, ABI, signer);
     const tx = await c.claim(id); toast('⏳ Claiming…');
@@ -812,7 +1322,7 @@ async function claimPay(id){
   }catch(e){ toast('Claim failed: ' + (e.shortMessage||e.message||'').slice(0,50)); }
 }
 async function recallPay(id){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner()) return;
   try{
     const c = new ethers.Contract(ARCPAY, ABI, signer);
     const tx = await c.recall(id); toast('⏳ Recalling…');
@@ -820,7 +1330,54 @@ async function recallPay(id){
   }catch(e){ toast('Recall failed: ' + (e.shortMessage||e.message||'').slice(0,50)); }
 }
 
-checkIncoming();
+/* Nothing above this line touches the network. boot() is the only place that
+   constructs providers, and it runs only after ethers has loaded and the
+   network profile has been checked. */
+function boot(){
+  const missing = configProblems();
+  if(missing.length){
+    fatal(`Configuration incomplete for "${NET.label}" — missing: ${missing.join(', ')}. Fill these in under NETWORKS['${ACTIVE_NETWORK}'] before using this build.`);
+    return;
+  }
+  readProvider = new ethers.JsonRpcProvider(RPC);
+  iface = new ethers.Interface(ABI);
+  sepoliaProvider = new ethers.JsonRpcProvider(DEST_RPC);
+  booted = true;
+
+  // Links and copy that depend on the active network.
+  $('cLink').href = `${SCAN}/address/${ARCPAY}`;
+  $('netPill').textContent = NET.label;
+  $('footNet').textContent = NET.label;
+  $('ccReceiver').value = DEST_RECEIVER;
+  $('ccLaneSrc').textContent = NET.label;
+  $('ccLane').textContent = DEST_NAME;
+  $('ccDestName').textContent = DEST_NAME;
+  $('ccReceiverLink').href = `${DEST_SCAN}/address/${DEST_RECEIVER}`;
+  $('ccReceiverLink').textContent = short(DEST_RECEIVER) + ' ↗';
+  $('ccRouterAddr').textContent = short(CCIP_ROUTER);
+  $('ccReceiverAddr').textContent = short(DEST_RECEIVER);
+  $('tAgentLink').href = `${SCAN}/address/${TREASURY}`;
+  $('tAgentLink').textContent = short(TREASURY) + ' ↗';
+  $('tPythAddr').textContent = short(PYTH);
+
+  // The billing agent keeps a private key in localStorage. That is acceptable
+  // for a testnet demo and unacceptable for real funds — disable it outright.
+  if(!IS_TESTNET) kpDisableForMainnet();
+
+  refreshGas();
+  setInterval(refreshGas, 15000);
+  checkIncoming();
+
+  // A pay-link should land on the payment it is asking for, not the overview.
+  const wanted = incoming ? 'pay' : location.hash.slice(1);
+  if(wanted && TABS.includes(wanted)) go(wanted);
+  else document.body.classList.remove('engaged');   // first visit sees the pitch
+}
+
+window.__ethersReady
+  .then(boot)
+  .catch(() => fatal('Could not load the ethers library — the app cannot sign or read anything. Check your connection and reload.'));
+
 window.connect=connect; window.disconnect=disconnect; window.go=go; window.sendPay=sendPay; window.makeLink=makeLink;
 window.payIncoming=payIncoming; window.sendSplit=sendSplit; window.loadHistory=loadHistory;
 window.pickWindow=pickWindow; window.sendRecallable=sendRecallable; window.loadRecalls=loadRecalls;
@@ -828,8 +1385,8 @@ window.claimPay=claimPay; window.recallPay=recallPay;
 window.estimateCcipFee=estimateCcipFee; window.sendCcip=sendCcip; window.loadSepoliaMessages=loadSepoliaMessages;
 
 /* ===== Subscriptions contract ===== */
-const ARCSUB = '0x015f65293c936741588dC03ebDD1A193D62535eC';
-const USDC_ERC20 = '0x3600000000000000000000000000000000000000';
+const ARCSUB = NET.contracts.subs;
+const USDC_ERC20 = NET.contracts.usdc;
 const SUB_ABI = [
   'function subscribe(address merchant, uint96 amount, uint32 interval, string label) returns (uint256)',
   'function charge(uint256 id)',
@@ -881,20 +1438,20 @@ async function ensureSubAllowance(minAmount){
 
 async function createSub(){
   if (!ARCSUB){ setStatus('subStatus','Subscription contract not deployed yet.','err'); return; }
-  if (!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('subStatus')) return;
   const to = validAddr($('subTo').value);
-  const amt = parseFloat($('subAmt').value);
+  const amt = parseAmount($('subAmt').value);
   const label = $('subLabel').value.trim() || 'subscription';
   if (!to){ setStatus('subStatus','Enter a valid merchant address.','err'); return; }
-  if (!amt || isNaN(amt)){ setStatus('subStatus','Enter a valid amount.','err'); return; }
+  if (!amt){ setStatus('subStatus','Enter an amount above zero.','err'); return; }
   try{
-    const amount = ethers.parseUnits(amt.toFixed(6), 6);
+    const amount = toUnits6(amt);
     await ensureSubAllowance(amount);
     setStatus('subStatus','Confirm subscription — first period is charged now…');
     const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
     const tx = await c.subscribe(to, amount, subInterval, label);
     const rc = await tx.wait();
-    setStatus('subStatus',`✓ Subscribed — ${amt} USDC ${intervalName(subInterval)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    setStatus('subStatus',`✓ Subscribed — ${escHtml(amt)} USDC ${intervalName(subInterval)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Subscription live');
     loadSubs();
   }catch(e){ setStatus('subStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
@@ -902,64 +1459,85 @@ async function createSub(){
 
 async function fetchSubs(ids){
   const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
-  const out = [];
-  for (const id of ids){
+  const rows = await inBatches([...ids], 10, async id => {
     try{
       const s = await c.getSub(id);
-      out.push({ id: id.toString(), subscriber: s.subscriber, merchant: s.merchant,
+      return { id: id.toString(), subscriber: s.subscriber, merchant: s.merchant,
         amount: s.amount, interval: s.interval, nextChargeAt: s.nextChargeAt,
-        active: s.active, label: s.label });
-    }catch{}
-  }
-  return out;
+        active: s.active, label: s.label };
+    }catch{ return null; }
+  });
+  return rows.filter(Boolean);
 }
 
 function subRow(s, mine){
   const amt = Number(ethers.formatUnits(s.amount,6)).toFixed(2);
   const who = mine ? ('to ' + short(s.merchant)) : ('from ' + short(s.subscriber));
-  const state = !s.active ? '<span style="color:var(--muted)">cancelled</span>'
-    : subDue(s) ? '<span style="color:var(--amber)">DUE NOW</span>'
-    : '<span style="color:var(--green)">next in ' + subLeft(s) + '</span>';
+  const due = subDue(s);
+  const badge = !s.active ? '<span class="badge off">cancelled</span>'
+    : due ? '<span class="badge due">due now</span>'
+          : `<span class="badge live">next in ${subLeft(s)}</span>`;
   const btn = !s.active ? ''
-    : mine ? `<button class="connect-btn" onclick="cancelSub('${s.id}')">Cancel</button>`
-    : subDue(s) ? `<button class="connect-btn primary" onclick="chargeSub('${s.id}')">Charge now</button>`
-                : `<button class="connect-btn" onclick="cancelSub('${s.id}')">Cancel</button>`;
-  return `<div class="receipt" style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px;">
-    <div style="min-width:0;">
-      <b>${escHtml(s.label||'subscription')}</b> · ${amt} USDC / ${intervalName(s.interval)}<br/>
-      <span style="color:var(--muted);font-size:12px;">#${s.id} · ${who} · ${state}</span>
+    : (!mine && due) ? `<button class="connect-btn primary" onclick="chargeSub('${s.id}')">Charge now</button>`
+                     : `<button class="connect-btn" onclick="cancelSub('${s.id}')">Cancel</button>`;
+  return `<div class="sub-row${due && s.active ? ' due' : ''}">
+    <div class="sr-main">
+      <div class="sr-title">${escHtml(s.label||'subscription')} ${badge}</div>
+      <div class="sr-meta">#${s.id} · ${who} · every ${intervalName(s.interval)}</div>
     </div>
+    <div class="sr-amt">${amt} USDC</div>
     <div>${btn}</div>
   </div>`;
 }
 
+function skeletons(n){ return Array.from({length:n}, () => '<div class="skeleton"></div>').join(''); }
+
+/* Merchant-side headline numbers — the thing a merchant actually cares about. */
+function renderSubStats(activeMerch){
+  $('subStats').style.display = activeMerch.length ? '' : 'none';
+  if(!activeMerch.length) return;
+  $('statSubs').textContent = activeMerch.length;
+  const monthly = activeMerch.reduce((t,s) =>
+    t + Number(ethers.formatUnits(s.amount,6)) * (2592000/Number(s.interval)), 0);
+  $('statMrr').textContent = monthly.toFixed(2);
+  const upcoming = activeMerch.map(s => Number(s.nextChargeAt)).sort((a,b)=>a-b)[0];
+  $('statNext').textContent = upcoming === undefined ? '—'
+    : (upcoming <= Math.floor(Date.now()/1000) ? 'due now' : subLeft({ nextChargeAt: upcoming }));
+}
+
 async function loadSubs(){
   if (!ARCSUB){ toast('Subscription contract not deployed yet'); return; }
+  if(!requireReady()) return;
   if (!userAddress){ await connect(); if(!userAddress) return; }
   const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
   try{
     const [myIds, merchIds] = await Promise.all([
       c.listBySubscriber(userAddress), c.listByMerchant(userAddress)
     ]);
+    $('mySubsList').innerHTML = skeletons(2);
+    $('myMerchList').innerHTML = skeletons(2);
+
     const mine = await fetchSubs(myIds);
     merchSubsCache = await fetchSubs(merchIds);
 
     $('mySubsList').innerHTML = mine.length
       ? mine.map(s=>subRow(s,true)).join('')
-      : '<p class="empty">No subscriptions yet.</p>';
+      : '<p class="empty"><b>Nothing yet</b>You are not paying for any subscription on this contract.</p>';
 
     const activeMerch = merchSubsCache.filter(s=>s.active);
-    const monthly = activeMerch.reduce((t,s)=> t + Number(ethers.formatUnits(s.amount,6)) * (2592000/Number(s.interval)), 0);
-    $('myMerchList').innerHTML = (activeMerch.length
-      ? `<div class="hint" style="margin-bottom:10px;">Active subscribers: <b>${activeMerch.length}</b> · est. monthly revenue: <b>${monthly.toFixed(2)} USDC</b></div>`
-      : '') + (merchSubsCache.length
-      ? merchSubsCache.map(s=>subRow(s,false)).join('')
-      : '<p class="empty">Nobody subscribed to you yet. Share your address with a label 😎</p>');
-  }catch(e){ toast('Load failed: '+(e.shortMessage||e.message||'').slice(0,60)); }
+    renderSubStats(activeMerch);
+    $('myMerchList').innerHTML = activeMerch.length
+      ? activeMerch.map(s=>subRow(s,false)).join('')
+      : '<p class="empty"><b>No subscribers yet</b>Share your address with a plan label and they will show up here.</p>';
+  }catch(e){
+    $('mySubsList').innerHTML = '<p class="empty"><b>Could not load</b>' + escHtml((e.shortMessage||e.message||'').slice(0,80)) + '</p>';
+    $('myMerchList').innerHTML = '';
+    toast('Load failed: '+(e.shortMessage||e.message||'').slice(0,60));
+  }
 }
 
 async function chargeSub(id){
-  if (!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('merchStatus')) return;
   try{
     setStatus('merchStatus','Confirm charge…');
     const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
@@ -972,7 +1550,7 @@ async function chargeSub(id){
 }
 
 async function cancelSub(id){
-  if (!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner()) return;
   try{
     const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
     const tx = await c.cancel(id);
@@ -983,7 +1561,7 @@ async function cancelSub(id){
 }
 
 async function collectDue(){
-  if (!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('merchStatus')) return;
   await loadSubs();
   const due = merchSubsCache.filter(subDue).map(s=>s.id);
   if (!due.length){ setStatus('merchStatus','Nothing due right now.'); return; }
@@ -1001,21 +1579,22 @@ async function collectDue(){
 function toggleAutoCollect(){
   if (autoCollectTimer){
     clearInterval(autoCollectTimer); autoCollectTimer = null;
-    $('autoCollectBtn').textContent = '🤖 Auto-collector: OFF';
+    $('autoCollectBtn').textContent = 'Auto-collector: OFF';
     toast('Auto-collector stopped');
   } else {
-    $('autoCollectBtn').textContent = '🤖 Auto-collector: ON';
+    $('autoCollectBtn').textContent = 'Auto-collector: ON';
     toast('Auto-collector running — checks every 60s');
     autoCollectTimer = setInterval(async ()=>{
-      if (!signer || !ARCSUB) return;
+      if (!signer || !ARCSUB || !booted) return;
       try{
+        await ensureChain();   // unattended loop — never sign on the wrong chain
         await loadSubs();
         const due = merchSubsCache.filter(subDue).map(s=>s.id);
         if (due.length){
           const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
           const tx = await c.chargeMany(due);
           await tx.wait();
-          toast(`🤖 Auto-collected ${due.length} payment(s)`);
+          toast(`Auto-collected ${due.length} payment(s)`);
           loadSubs();
         }
       }catch{}
@@ -1028,19 +1607,53 @@ const KP_KEY = 'arcpayKeeperKey_v1';
 const KP_ABI = [
   'function nextId() view returns (uint256)',
   'function charge(uint256 id)',
+  'function chargeMany(uint256[] ids)',
   'function getSub(uint256 id) view returns (address subscriber, address merchant, uint96 amount, uint32 interval, uint40 nextChargeAt, bool active, string label)'
 ];
 let kpWallet = null, kpTimer = null, kpBusy = false;
+let kpSubs = new Map();        // id -> cached subscription row
+let kpHighestId = 0;           // highest id already discovered
+let kpGasWarned = false;
+const KP_BATCH = 25;           // ids charged per chargeMany call
+const KP_MIN_GAS = 0.05;       // below this the agent stops trying and asks to be funded
 
+/* The agent holds a private key in localStorage. That is a fine trade for a
+   testnet demo and a bad one for real money, so a non-testnet build turns the
+   whole feature off rather than tempting anyone to fund it. */
+function kpDisableForMainnet(){
+  $('sec-agent').querySelectorAll('button, input').forEach(el => { el.disabled = true; });
+  $('kpState').textContent = '⛔ disabled on ' + NET.label;
+  $('kpState').className = 'status err';
+  $('kpTerm').textContent =
+    '[boot] The billing agent stores a burner private key in this browser. That is testnet-only by design and is disabled on ' +
+    NET.label + '. Use the "Collect all due payments" button on the Subscriptions tab, or run a keeper from a server you control.';
+}
+function kpAllowed(){
+  if(IS_TESTNET) return true;
+  toast('Billing agent is testnet-only.');
+  return false;
+}
+
+const KP_TERM_MAX_LINES = 300;
 function kpLog(m, cls){
   const el = $('kpTerm');
-  const t = new Date().toLocaleTimeString('tr-TR');
+  const t = new Date().toLocaleTimeString();
   const color = cls==='ok' ? 'var(--green)' : cls==='err' ? 'var(--red)' : cls==='warn' ? 'var(--amber)' : 'var(--muted)';
-  el.innerHTML += `\n<span style="color:var(--muted)">[${t}]</span> <span style="color:${color}">${m}</span>`;
+  const line = document.createElement('div');
+  const stamp = document.createElement('span');
+  stamp.style.color = 'var(--muted)';
+  stamp.textContent = `[${t}] `;
+  const body = document.createElement('span');
+  body.style.color = color;
+  body.textContent = String(m);        // textContent, never innerHTML — labels come from strangers
+  line.append(stamp, body);
+  el.appendChild(line);
+  while(el.childElementCount > KP_TERM_MAX_LINES) el.removeChild(el.firstElementChild);
   el.scrollTop = el.scrollHeight;
 }
 
 function kpInit(){
+  if (!kpAllowed()) return;
   if (kpWallet) return;
   let k = localStorage.getItem(KP_KEY);
   if (!k){
@@ -1057,55 +1670,131 @@ async function kpBal(){
   if (!kpWallet) return;
   try{
     const b = await readProvider.getBalance(kpWallet.address);
-    $('kpGas').textContent = Number(ethers.formatEther(b)).toFixed(3) + ' USDC';
+    $('kpGas').textContent = Number(formatNative(b)).toFixed(3) + ' ' + NET.native.symbol;
   }catch(_){}
+}
+
+/* Refresh the cached subscription table: pick up ids created since the last
+   pass, and re-read only rows that have come due. Steady state is a single
+   nextId() call per tick instead of a few hundred serial getSub() reads. */
+async function kpRefresh(c){
+  const maxId = Number(await c.nextId());
+  const fresh = [];
+  for (let id = Math.max(1, kpHighestId + 1); id < maxId; id++) fresh.push(id);
+  kpHighestId = Math.max(kpHighestId, maxId - 1);
+
+  const now = Math.floor(Date.now()/1000);
+  const stale = [...kpSubs.entries()]
+    .filter(([, v]) => v.active && now >= v.nextChargeAt)
+    .map(([id]) => id);
+
+  const ids = [...new Set([...fresh, ...stale])];
+  if (fresh.length) kpLog(`📇 ${fresh.length} new subscription(s) discovered (up to #${kpHighestId}).`);
+
+  await inBatches(ids, 10, async id => {
+    try{
+      const s = await c.getSub(id);
+      kpSubs.set(id, {
+        active: s.active,
+        nextChargeAt: Number(s.nextChargeAt),
+        amount: s.amount,
+        merchant: s.merchant,
+        label: s.label
+      });
+    }catch{ kpSubs.delete(id); }
+  });
 }
 
 async function kpTick(){
   if (kpBusy || !kpWallet) return;
   kpBusy = true;
   try{
-    const c = new ethers.Contract(ARCSUB, KP_ABI, kpWallet);
-    const maxId = Number(await c.nextId());
-    const now = Math.floor(Date.now()/1000);
-    for (let id = 1; id < Math.min(maxId, 200); id++){
-      let s; try{ s = await c.getSub(id); }catch{ continue; }
-      if (!s.active || now < Number(s.nextChargeAt)) continue;
-      kpLog(`🔁 Subscription #${id} ("${s.label}") is due — collecting ${ethers.formatUnits(s.amount,6)} USDC for ${short(s.merchant)}…`);
-      try{
-        const tx = await c.charge(id);
-        await tx.wait();
-        kpLog(`✓ #${id} charged autonomously — merchant paid, next cycle scheduled.`,'ok');
-      }catch(e){
-        kpLog(`#${id} charge failed: ` + (e.shortMessage||e.message||'').slice(0,70) + (String(e.message||'').includes('insufficient') ? ' — fund my gas!' : ''),'err');
-      }
+    // Out of gas → say so once and idle, instead of a failing charge every tick.
+    const gas = Number(formatNative(await readProvider.getBalance(kpWallet.address)));
+    if (gas < KP_MIN_GAS){
+      if (!kpGasWarned){ kpLog(`⛽ Only ${gas.toFixed(4)} ${NET.native.symbol} left — fund my gas and I'll resume.`,'warn'); kpGasWarned = true; }
+      kpBal();
+      return;
     }
-    kpBal();
-  }catch(e){ kpLog('tick error: ' + (e.shortMessage||e.message||'').slice(0,70),'err'); }
-  kpBusy = false;
+    kpGasWarned = false;
+
+    const c = new ethers.Contract(ARCSUB, KP_ABI, kpWallet);
+    await kpRefresh(c);
+
+    const now = Math.floor(Date.now()/1000);
+    const due = [...kpSubs.entries()].filter(([, v]) => v.active && now >= v.nextChargeAt);
+    if (!due.length) return;
+
+    for (let i = 0; i < due.length; i += KP_BATCH){
+      const slice = due.slice(i, i + KP_BATCH);
+      const ids = slice.map(([id]) => id);
+      for (const [id, v] of slice){
+        // v.label is a stranger's string — kpLog writes it as text, never markup.
+        kpLog(`🔁 Subscription #${id} ("${v.label}") is due — collecting ${ethers.formatUnits(v.amount,6)} USDC for ${short(v.merchant)}…`);
+      }
+      try{
+        const tx = ids.length === 1 ? await c.charge(ids[0]) : await c.chargeMany(ids);
+        await tx.wait();
+        kpLog(`✓ ${ids.length} subscription(s) charged autonomously — merchants paid, next cycles scheduled.`,'ok');
+      }catch(e){
+        const msg = (e.shortMessage || e.message || '');
+        const broke = msg.toLowerCase().includes('insufficient');
+        kpLog(`batch [${ids.join(', ')}] failed: ` + msg.slice(0,80) + (broke ? ' — fund my gas!' : ''), 'err');
+        // One uncollectable subscriber (no allowance, empty wallet) reverts the
+        // whole chargeMany. Fall back to charging one at a time so the rest of
+        // the batch still gets paid.
+        if(!broke && ids.length > 1){
+          kpLog('↩ retrying the batch one subscription at a time…','warn');
+          for(const id of ids){
+            try{
+              await (await c.charge(id)).wait();
+              kpLog(`✓ #${id} charged.`,'ok');
+            }catch(e2){
+              kpLog(`#${id} skipped: ` + (e2.shortMessage||e2.message||'').slice(0,70),'err');
+            }
+          }
+        }
+      }
+      // Re-read what we just touched so a failed charge is not retried blindly.
+      await inBatches(ids, 10, async id => {
+        try{
+          const sd = await c.getSub(id);
+          kpSubs.set(id, { active: sd.active, nextChargeAt: Number(sd.nextChargeAt),
+            amount: sd.amount, merchant: sd.merchant, label: sd.label });
+        }catch{ kpSubs.delete(id); }
+      });
+    }
+  }catch(e){ kpLog('tick error: ' + (e.shortMessage||e.message||'').slice(0,80),'err'); }
+  finally{ kpBusy = false; kpBal(); }
 }
 
 function kpStart(){
+  if (!kpAllowed()) return;
+  if (!requireReady('kpStatus')) return;
   kpInit();
+  if (!kpWallet) return;
   if (kpTimer) return;
   kpTimer = setInterval(kpTick, 15000);
   kpTick();
-  $('kpState').textContent = '🟢 agent ONLINE — scanning subscriptions every 15s';
+  $('kpState').textContent = 'agent online — scanning every 15s';
+  $('kpDot').classList.add('on');
   kpLog('▶ Agent started.','ok');
 }
 function kpStop(){
   clearInterval(kpTimer); kpTimer = null;
   $('kpState').textContent = 'agent offline';
+  $('kpDot').classList.remove('on');
   kpLog('■ Agent stopped.');
 }
 
 async function kpFund(){
+  if(!await requireSigner('kpStatus')) return;
   kpInit();
-  if (!signer){ await connect(); if(!signer) return; }
-  const amt = $('kpFundAmt').value || '1';
+  const amt = parseAmount($('kpFundAmt').value || '1');
+  if(!amt){ setStatus('kpStatus','Enter a gas amount above zero.','err'); return; }
   try{
-    setStatus('kpStatus', `Confirm sending ${amt} USDC gas to the agent…`);
-    const tx = await signer.sendTransaction({ to: kpWallet.address, value: ethers.parseEther(amt) });
+    setStatus('kpStatus', `Confirm sending ${amt} ${NET.native.symbol} gas to the agent…`);
+    const tx = await signer.sendTransaction({ to: kpWallet.address, value: parseNative(amt) });
     const rc = await tx.wait();
     setStatus('kpStatus', `✓ Agent funded · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     kpBal();
@@ -1113,11 +1802,12 @@ async function kpFund(){
 }
 
 async function kpSweep(){
+  if(!requireReady('kpStatus')) return;
   kpInit();
   if (!userAddress){ await connect(); if(!userAddress) return; }
   try{
     const bal = await readProvider.getBalance(kpWallet.address);
-    const keep = ethers.parseEther('0.2');
+    const keep = parseNative('0.2');
     if (bal <= keep){ setStatus('kpStatus','Nothing to sweep (keeping 0.2 for gas).'); return; }
     const tx = await kpWallet.sendTransaction({ to: userAddress, value: bal - keep });
     await tx.wait();
@@ -1128,18 +1818,21 @@ async function kpSweep(){
 }
 
 function kpReset(){
-  if (!confirm('Generate a NEW agent key? Sweep gas back first!')) return;
+  if (!kpAllowed()) return;
+  if (!confirm('Generate a NEW agent key? Any gas left on the old one becomes unreachable — sweep it back first!')) return;
   localStorage.removeItem(KP_KEY);
-  kpWallet = null; kpStop(); kpInit();
+  kpWallet = null; kpStop();
+  kpSubs.clear(); kpHighestId = 0; kpGasWarned = false;
+  kpInit();
 }
 
 window.kpStart=kpStart; window.kpStop=kpStop; window.kpFund=kpFund; window.kpSweep=kpSweep; window.kpReset=kpReset;
 
 /* ===== Treasury agent (Pyth EUR/USD · USDC⇄EURC ratio) ===== */
-const TREASURY = '0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53';
-const EURC = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
-const PYTH = '0x2880aB155794e7179c9eE2e38200202908C17B43';
-const PYTH_EURUSD_ID = '0xa995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b';
+const TREASURY = NET.contracts.treasury;
+const EURC = NET.contracts.eurc;
+const PYTH = NET.contracts.pyth;
+const PYTH_EURUSD_ID = NET.pythEurUsdId;
 const HERMES = 'https://hermes.pyth.network/v2/updates/price/latest';
 const TREASURY_ABI = [
   'function rebalance(bytes[] updateData) payable',
@@ -1159,10 +1852,10 @@ const ERC20_T_ABI = [
 let eurUsd = null, pythTimer = null, tState = null;
 
 async function pythRefresh(){
+  if(!booted) return null;
   $('eurMeta').textContent = 'fetching…';
   try{
-    const r = await fetch(`${HERMES}?ids[]=${PYTH_EURUSD_ID}`);
-    const j = await r.json();
+    const j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}`);
     const p = j.parsed?.[0]?.price;
     if(!p) throw new Error('no price in feed');
     eurUsd = Number(p.price) * Math.pow(10, Number(p.expo));
@@ -1195,14 +1888,14 @@ function pythToggleLive(){
 
 // Pull the signed Pyth update blob (VAA) needed to move the price on-chain.
 async function pythUpdateData(){
-  const r = await fetch(`${HERMES}?ids[]=${PYTH_EURUSD_ID}&encoding=hex`);
-  const j = await r.json();
+  const j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}&encoding=hex`);
   const arr = j.binary?.data || [];
   if(!arr.length) throw new Error('no Pyth update data');
   return arr.map(h => h.startsWith('0x') ? h : '0x'+h);
 }
 
 async function treasuryScan(){
+  if(!requireReady('tStatus')) return;
   try{
     setStatus('tStatus','Reading treasury status on-chain…');
     const c = new ethers.Contract(TREASURY, TREASURY_ABI, readProvider);
@@ -1259,17 +1952,19 @@ function renderHealth(){
 }
 
 async function treasuryDeposit(which){
-  if(!signer){ await connect(); if(!signer) return; }
-  const amt = parseFloat($('tDepAmt').value);
-  if(!amt || isNaN(amt) || amt <= 0){ setStatus('tStatus','Enter a deposit amount.','err'); return; }
+  if(!await requireSigner('tStatus')) return;
+  const amt = parseAmount($('tDepAmt').value);
+  if(!amt){ setStatus('tStatus','Enter a deposit amount above zero.','err'); return; }
   const token = which === 'eurc' ? EURC : USDC_ERC20;
   const sym = which === 'eurc' ? 'EURC' : 'USDC';
   try{
-    const wei = ethers.parseUnits(amt.toFixed(6), 6);
+    const wei = toUnits6(amt);
     const erc = new ethers.Contract(token, ERC20_T_ABI, signer);
+    // Approve exactly this deposit rather than an unlimited allowance — a
+    // treasury bug or key compromise then cannot drain the wallet later.
     if(await erc.allowance(userAddress, TREASURY) < wei){
       setStatus('tStatus',`Approve ${sym} for the treasury…`);
-      await (await erc.approve(TREASURY, ethers.MaxUint256)).wait();
+      await (await erc.approve(TREASURY, wei)).wait();
     }
     setStatus('tStatus',`Depositing ${amt} ${sym}…`);
     const c = new ethers.Contract(TREASURY, TREASURY_ABI, signer);
@@ -1281,7 +1976,7 @@ async function treasuryDeposit(which){
 }
 
 async function treasuryRebalance(){
-  if(!signer){ await connect(); if(!signer) return; }
+  if(!await requireSigner('tStatus')) return;
   try{
     await treasuryScan();
     if(!tState) return;
@@ -1305,10 +2000,12 @@ async function treasuryRebalance(){
         setStatus('tStatus',`To settle this you must supply ~${need.toFixed(2)} ${sym} as keeper, but you hold ${bal.toFixed(2)} ${sym}. Get more ${sym}, or fund the treasury to shrink the gap first.`,'err');
         return;
       }
+      // Head-room for the price moving between the quote and the settle, but
+      // still a bounded allowance rather than MaxUint256.
       const needWei = ethers.parseUnits((need * 2).toFixed(6), 6);
       if(await erc.allowance(userAddress, TREASURY) < needWei){
         setStatus('tStatus',`Approve ${sym} so the agent can settle…`);
-        await (await erc.approve(TREASURY, ethers.MaxUint256)).wait();
+        await (await erc.approve(TREASURY, needWei)).wait();
       }
     }
 
