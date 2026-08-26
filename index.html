@@ -535,6 +535,7 @@ body.engaged .hero{display:none;}
 
     <div class="card">
       <h2>Fund &amp; rebalance</h2>
+      <div id="tOwnerWarn" class="hint" style="display:none;border:1px solid var(--red);background:var(--red-bg);color:var(--red);padding:var(--s3) var(--s4);border-radius:var(--r-md);margin-bottom:var(--s3);"></div>
       <div class="hint" style="margin-bottom:14px;">A ratio needs both sides, so seed the treasury with USDC and EURC. Then anyone can be the <b>keeper</b>: supply the short side, receive the other plus a small bonus — that incentive is what makes the agent run without a babysitter.</div>
       <div class="row" style="align-items:flex-end;margin-top:0;">
         <div style="flex:1;min-width:150px;">
@@ -1866,6 +1867,7 @@ const HERMES = 'https://hermes.pyth.network/v2/updates/price/latest';
 const TREASURY_ABI = [
   'function rebalance(bytes[] updateData) payable',
   'function deposit(address token, uint256 amount)',
+  'function owner() view returns (address)',
   'function getStatus() view returns (uint256 usdcBal, uint256 eurcBal, uint16 targetUsdcBps, uint16 driftBps, uint16 maxConfBps, uint16 keeperBonusBps, bool paused)',
   // Pyth custom errors — here only so ethers can name the revert instead of "unknown custom error".
   'error StalePrice()','error InsufficientFee()','error InvalidUpdateData()','error InvalidUpdateDataSource()',
@@ -1878,7 +1880,22 @@ const ERC20_T_ABI = [
   'function allowance(address,address) view returns (uint256)',
   'function approve(address,uint256) returns (bool)'
 ];
-let eurUsd = null, pythTimer = null, tState = null;
+let eurUsd = null, pythTimer = null, tState = null, tOwner = null;
+
+/* The treasury takes deposits from anyone but only its owner can withdraw, so
+   funding it is a one-way transfer unless you are that owner. Say so where the
+   Fund buttons are, not in a footnote. */
+function renderOwnerWarning(){
+  const box = $('tOwnerWarn');
+  if(!tOwner){ box.style.display = 'none'; return; }
+  const mine = userAddress && userAddress.toLowerCase() === tOwner.toLowerCase();
+  if(mine){ box.style.display = 'none'; return; }
+  box.style.display = '';
+  box.innerHTML = `⚠ <b>Deposits here are one-way.</b> Anyone may fund this treasury, but only its owner
+    (<span style="font-family:var(--mono)">${short(tOwner)}</span>) can withdraw — there is no function that
+    returns a depositor's funds. Fund it only if that address is yours. Acting as a <b>keeper</b> through
+    "Run rebalance" is different: that is a swap, and you receive the other side plus a bonus in the same transaction.`;
+}
 
 async function pythRefresh(){
   if(!booted) return null;
@@ -1928,7 +1945,9 @@ async function treasuryScan(){
   try{
     setStatus('tStatus','Reading treasury status on-chain…');
     const c = new ethers.Contract(TREASURY, TREASURY_ABI, readProvider);
-    const s = await c.getStatus();
+    const [s, ownerAddr] = await Promise.all([c.getStatus(), c.owner().catch(() => null)]);
+    tOwner = ownerAddr;
+    renderOwnerWarning();
     tState = {
       usdc: Number(ethers.formatUnits(s.usdcBal, 6)),
       eurc: Number(ethers.formatUnits(s.eurcBal, 6)),
@@ -1986,6 +2005,10 @@ async function treasuryDeposit(which){
   if(!amt){ setStatus('tStatus','Enter a deposit amount above zero.','err'); return; }
   const token = which === 'eurc' ? EURC : USDC_ERC20;
   const sym = which === 'eurc' ? 'EURC' : 'USDC';
+  if(tOwner && (!userAddress || userAddress.toLowerCase() !== tOwner.toLowerCase())){
+    if(!confirm(`Only the treasury owner (${short(tOwner)}) can withdraw from this contract. ` +
+                `Depositing ${amt} ${sym} hands it over with no way to take it back.\n\nDeposit anyway?`)) return;
+  }
   try{
     const wei = toUnits6(amt);
     const erc = new ethers.Contract(token, ERC20_T_ABI, signer);
