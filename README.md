@@ -32,8 +32,15 @@ Playwright test suite.
 ```bash
 npm install          # test tooling only; the page itself has no build step
 npm run serve        # http://127.0.0.1:8080
-npm test             # headless Playwright suite
+npm test             # contract tests, then UI tests
+npm run test:contracts
+npm run test:ui
 ```
+
+Contracts compile with the `solc` pinned in `devDependencies` rather than a
+binary fetched at build time, so the same compiler is used on every machine,
+offline. `hardhat.config.js` overrides Hardhat's compiler-download subtask to
+point at it.
 
 The page can also be opened straight from a static host; nothing is compiled.
 
@@ -227,6 +234,22 @@ and a stubbed EIP-1193 wallet — no chain, no funds, no network.
 | `chain-guard.spec.js` | Wrong-network refusal, chain add, disconnect cleanup |
 | `config.spec.js` | Unconfigured-network refusal |
 | `navigation.spec.js` | Landing pitch, tab folding, deep links, keyboard tablist, live pricing |
+
+### Contract tests
+
+`test/` runs the contracts on a local EVM — **60 tests**. They exist to prove
+what the review claims, in both directions: the guards that hold, and the
+findings that are real.
+
+| File | Notable cases |
+| --- | --- |
+| `ArcPayV2.t.js` | A recipient contract re-entering `claim()` takes exactly what it is owed and cannot touch another payment. A recipient that rejects ETH cannot strand funds — the sender still recalls. **`splitPay()` reverts the whole batch when one recipient refuses**, which is the griefing vector. Dust returns to the sender; the window bounds hold. |
+| `ArcSub.t.js` | A token that re-enters `charge()` cannot double-charge. Ten missed periods charge once, not ten. **`chargeMany()` charges what it can and silently skips the rest** — the test asserts the schedules are the only way to tell who paid, which is what the UI now reports. Only `msg.sender` can subscribe themselves, which is what bounds an unlimited approval. |
+| `TreasuryAgent.t.js` | The confidence guard defers instead of trading, and nothing moves. Rebalancing pays the keeper a bonus and lands the mix inside the band. **Anyone can deposit but only the owner can withdraw**, asserted with a stranger's money. **`rebalance()` has no `maxIn`**, asserted by showing the same call pulls ten times as much from a treasury ten times larger. Native currency sent in cannot come out. |
+
+Findings are marked `FINDING:` in the test files. They assert current
+behaviour, so if a contract is ever fixed and redeployed, the matching test
+fails and points at what changed.
 
 If Playwright cannot download its own browser, point it at an existing one:
 
