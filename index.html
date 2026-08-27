@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -513,7 +514,7 @@ body.engaged .hero{display:none;}
         <button class="connect-btn" onclick="pythRefresh()">↻ Refresh price</button>
         <button class="connect-btn" id="pythLiveBtn" onclick="pythToggleLive()">📡 Live feed: OFF</button>
       </div>
-      <div class="hint" style="margin-top:10px;">Feed <span style="color:var(--muted)">0xa995…c30b</span> · pulled straight from Pyth Hermes, no key needed.</div>
+      <div class="hint" style="margin-top:10px;">Feed <span style="color:var(--muted)">0xa995…c30b</span> · read from the Pyth contract on Arc, with the signed off-chain update pulled through this site's own endpoint.</div>
     </div>
 
     <div class="card">
@@ -713,7 +714,13 @@ async function fetchJson(url, ms = 12000){
   const t = setTimeout(() => ctl.abort(), ms);
   try{
     const r = await fetch(url, { signal: ctl.signal });
-    if(!r.ok) throw new Error('HTTP ' + r.status);
+    if(!r.ok){
+      // Surface the server's own explanation when there is one — a bare
+      // "HTTP 500" hides "PYTH_API_KEY is not set on this deployment".
+      let why = '';
+      try{ why = (await r.clone().json()).error || ''; }catch(_){}
+      throw new Error('HTTP ' + r.status + (why ? ' — ' + why : ''));
+    }
     return await r.json();
   } finally { clearTimeout(t); }
 }
@@ -745,7 +752,20 @@ function requireReady(statusId){
   return false;
 }
 
-function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200); }
+let toastTimer = null;
+function toast(m){
+  const t=$('toast'); t.textContent=m; t.classList.add('show');
+  clearTimeout(toastTimer);                       // a second toast used to inherit the first's countdown
+  toastTimer = setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+/* Error text bound for the UI. Revert reasons and RPC messages are strings we
+   did not write and they land in innerHTML, so they get escaped here once
+   rather than at thirty call sites. */
+function errText(e, n = 90){
+  const raw = (e && (e.shortMessage || e.message)) || String(e || '');
+  return escHtml(raw.slice(0, n));
+}
 function setStatus(id,msg,cls){ const s=$(id); s.innerHTML=msg||''; s.className='status'+(cls?' '+cls:''); }
 
 /* Tab order is the product argument: subscriptions first, the agent that runs
@@ -878,7 +898,7 @@ async function connect(){
     $('balPill').textContent = Number(formatNative(bal)).toFixed(2) + ' ' + NET.native.symbol;
     $('balPill').style.display = '';
     toast('✓ Connected');
-  }catch(e){ toast('Connect failed: ' + (e.shortMessage||e.message||'').slice(0,80)); }
+  }catch(e){ toast('Connect failed: ' + errText(e,80)); }
   finally{ btn.disabled = false; }
 }
 
@@ -896,6 +916,17 @@ async function disconnect(){
   $('subStats').style.display = 'none';
   rcItems = [];
   merchSubsCache = [];
+  $('ccInbox').innerHTML = '<p class="empty">Send a cross-chain message, wait a few minutes, then load — this proves it arrived and ran code on the other chain.</p>';
+  // Treasury figures are read per-wallet; leaving the old ones up is a lie.
+  tState = null;
+  ['tUsdc','tEurc','tTarget','tDrift'].forEach(id => { $(id).textContent = '—'; });
+  $('tAlloc').textContent = '— / —';
+  $('tVerdict').textContent = 'connect & check';
+  $('tKeeper').innerHTML = '';
+  // The owner warning is about *this* wallet's relationship to the treasury,
+  // so it must not survive the wallet going away.
+  tOwner = null;
+  renderOwnerWarning();
   // Anything that signs on a timer must stop the moment the wallet goes away.
   if(autoCollectTimer){ clearInterval(autoCollectTimer); autoCollectTimer = null; $('autoCollectBtn').textContent = 'Auto-collector: OFF'; }
   toast('Disconnected');
@@ -934,7 +965,7 @@ async function sendPay(toOverride, amtOverride, noteOverride, statusId){
     const rc = await tx.wait();
     setStatus(sid,`✅ Paid ${escHtml(amt)} ${NET.native.symbol} to ${short(to)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view receipt ↗</a>`,'ok');
     toast('✓ Payment sent');
-  }catch(e){ setStatus(sid,'Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
+  }catch(e){ setStatus(sid,'Failed: ' + errText(e,90),'err'); }
 }
 
 function makeLink(){
@@ -998,7 +1029,7 @@ async function sendSplit(){
     const rc = await tx.wait();
     setStatus('splitStatus',`✅ Split ${escHtml(amt)} ${NET.native.symbol} across ${addrs.length} wallets · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">view tx ↗</a>`,'ok');
     toast('✓ Split sent');
-  }catch(e){ setStatus('splitStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
+  }catch(e){ setStatus('splitStatus','Failed: ' + errText(e,90),'err'); }
 }
 
 /* ── header gas pill ── */
@@ -1074,7 +1105,7 @@ async function estimateCcipFee(){
     setStatus('ccStatus','');
     return fee;
   }catch(e){
-    setStatus('ccStatus','Fee estimate failed: ' + (e.shortMessage||e.message||'').slice(0,110),'err');
+    setStatus('ccStatus','Fee estimate failed: ' + errText(e,110),'err');
     return null;
   }
 }
@@ -1099,7 +1130,7 @@ async function sendCcip(){
     const rc = await tx.wait();
     setStatus('ccStatus',`✅ Sent from Arc → Ethereum Sepolia · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">Arc tx ↗</a> · <a href="https://ccip.chain.link" target="_blank" rel="noreferrer">track on CCIP ↗</a><br/><span style="color:var(--muted)">Delivery takes a few minutes. Once it lands, hit "Load messages on Sepolia" below to see it stored in your receiver contract.</span>`,'ok');
     toast('✓ Cross-chain message sent');
-  }catch(e){ setStatus('ccStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,130),'err'); }
+  }catch(e){ setStatus('ccStatus','Failed: ' + errText(e,130),'err'); }
 }
 
 /* Read messages that have landed in the receiver contract on Sepolia */
@@ -1125,7 +1156,7 @@ async function loadSepoliaMessages(){
       </div>`;
     }).join('');
   }catch(e){
-    box.innerHTML = `<p class="empty">Could not read contract: ${escHtml((e.shortMessage||e.message||'').slice(0,90))}</p>`;
+    box.innerHTML = `<p class="empty">Could not read contract: ${errText(e,90)}</p>`;
   }
 }
 
@@ -1136,22 +1167,71 @@ async function loadSepoliaMessages(){
    payments fall off the end of that window and simply stop showing up.
    Primary path: indexed topic queries over a chunked block range.
    Fallback: the explorer's address-log feed, as before. */
-const LOG_LOOKBACK_BLOCKS = 500000;
-const LOG_CHUNK_BLOCKS = 50000;
+/* A fixed chunk size is a guess about a limit the RPC never told us: too big
+   and every call fails, too small and a full history costs hundreds of round
+   trips. So probe once to learn the widest range this node will actually
+   serve, then walk backwards from the head in that size.
+
+   Walking backwards is the important part. Arc's sub-second blocks made the
+   old fixed 500k window about six days deep, and any scheme that starts at
+   block 0 spends its budget on ancient history and never reaches the payment
+   the user made this morning. Newest first means a truncated scan still shows
+   the receipts that matter. */
+const LOG_MIN_CHUNK = 2000;      // floor — below this, treat it as a real failure
+const LOG_MAX_CALLS = 60;        // ceiling on round trips per load
 const addrTopic = a => ethers.zeroPadValue(ethers.getAddress(a), 32);
+let logScanTruncated = false;
+let logChunkSize = 0;            // learned once per session, reused after
+
+const takeLog = l => ({ topics:[...l.topics], data:l.data,
+  transactionHash:l.transactionHash, blockNumber:l.blockNumber, index:l.index });
+
+/* Find the widest window the node accepts, by halving from the whole chain. */
+async function learnChunk(topics, latest, spend){
+  let span = latest + 1;
+  while(span > LOG_MIN_CHUNK){
+    spend();                                  // failed probes cost round trips too
+    try{
+      await readProvider.getLogs({ address: ARCPAY, topics,
+        fromBlock: Math.max(0, latest - span + 1), toBlock: latest });
+      return span;
+    }catch(_){ span = Math.floor(span / 2); }
+  }
+  return LOG_MIN_CHUNK;
+}
 
 async function queryLogs(topicSets){
   const latest = await readProvider.getBlockNumber();
-  const from = Math.max(0, latest - LOG_LOOKBACK_BLOCKS);
   const out = [];
-  for(const topics of topicSets){
-    for(let start = from; start <= latest; start += LOG_CHUNK_BLOCKS){
-      const end = Math.min(start + LOG_CHUNK_BLOCKS - 1, latest);
-      const logs = await readProvider.getLogs({ address: ARCPAY, topics, fromBlock: start, toBlock: end });
-      out.push(...logs.map(l => ({ topics:[...l.topics], data:l.data,
-        transactionHash:l.transactionHash, blockNumber:l.blockNumber, index:l.index })));
-    }
+  let calls = 0;
+  logScanTruncated = false;
+
+  if(!logChunkSize){
+    logChunkSize = await learnChunk(topicSets[0], latest, () => { calls++; });
   }
+
+  let to = latest;
+  while(to >= 0){
+    if(calls + topicSets.length > LOG_MAX_CALLS){ logScanTruncated = true; break; }
+    const from = Math.max(0, to - logChunkSize + 1);
+    for(const topics of topicSets){
+      calls++;
+      try{
+        const logs = await readProvider.getLogs({ address: ARCPAY, topics, fromBlock: from, toBlock: to });
+        out.push(...logs.map(takeLog));
+      }catch(e){
+        // The node moved the goalposts mid-scan. Shrink and retry this window
+        // once; if it still refuses, hand over to the explorer fallback.
+        if(logChunkSize <= LOG_MIN_CHUNK) throw e;
+        logChunkSize = Math.max(LOG_MIN_CHUNK, Math.floor(logChunkSize / 2));
+        to = Math.min(latest, to + logChunkSize);   // redo from here at the smaller size
+        break;
+      }
+    }
+    if(from === 0) break;
+    to = from - 1;
+  }
+
   // The same log can match two topic sets (e.g. paying yourself) — de-duplicate.
   const seen = new Set();
   return out.filter(l => {
@@ -1161,15 +1241,18 @@ async function queryLogs(topicSets){
   });
 }
 
+const EXPLORER_PAGES = 20;
 async function explorerLogs(){
   let items = [], pp = null;
-  for(let p = 0; p < 5; p++){
+  logScanTruncated = false;
+  for(let p = 0; p < EXPLORER_PAGES; p++){
     let url = `${SCAN}/api/v2/addresses/${ARCPAY}/logs`;
     if(pp) url += '?' + new URLSearchParams(pp).toString();
     const j = await fetchJson(url);
     items = items.concat(j.items || []);
     if(!j.next_page_params) break;
     pp = j.next_page_params;
+    if(p === EXPLORER_PAGES - 1) logScanTruncated = true;   // more exists than we read
   }
   return items.map((l,i)=>({
     topics: (l.topics || []).filter(Boolean),
@@ -1206,7 +1289,10 @@ async function loadHistory(){
       .filter(x => x.ev.name === 'PaymentSent' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me))
       .sort((a,b)=>b.l.blockNumber - a.l.blockNumber);
     if(!all.length){ $('histList').innerHTML = '<p class="empty">No receipts yet — send your first payment in the Pay tab.</p>'; return; }
-    $('histList').innerHTML = all.slice(0,30).map(({ev,l})=>{
+    const note = logScanTruncated
+      ? '<p class="empty">This contract has more history than one scan can read. The most recent receipts are shown.</p>'
+      : '';
+    $('histList').innerHTML = note + all.slice(0,30).map(({ev,l})=>{
       const out = ev.args.from.toLowerCase() === me;
       return `<div class="receipt">
         <div class="r-amt" style="color:${out?'var(--text)':'var(--green)'}">${out?'−':'+'}${Number(formatNative(ev.args.amount)).toFixed(4)} ${NET.native.symbol}</div>
@@ -1218,7 +1304,7 @@ async function loadHistory(){
       </div>`;
     }).join('');
   }catch(e){
-    $('histList').innerHTML = `<p class="empty">Could not read logs: ${escHtml((e.shortMessage||e.message||'').slice(0,80))}</p>`;
+    $('histList').innerHTML = `<p class="empty">Could not read logs: ${errText(e,80)}</p>`;
   }
 }
 
@@ -1246,7 +1332,7 @@ async function sendRecallable(){
     setStatus('rcStatus',`✅ Recallable sent — recipient can claim now, you can recall after the window · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Recallable payment sent');
     loadRecalls();
-  }catch(e){ setStatus('rcStatus','Failed: ' + (e.shortMessage||e.message||'').slice(0,90),'err'); }
+  }catch(e){ setStatus('rcStatus','Failed: ' + errText(e,90),'err'); }
 }
 
 let rcItems = [];
@@ -1293,7 +1379,7 @@ async function loadRecalls(){
     });
     renderRecalls();
   }catch(e){
-    $('rcList').innerHTML = `<p class="empty">Could not read: ${escHtml((e.shortMessage||e.message||'').slice(0,80))}</p>`;
+    $('rcList').innerHTML = `<p class="empty">Could not read: ${errText(e,80)}</p>`;
   }
 }
 
@@ -1338,7 +1424,7 @@ async function claimPay(id){
     const c = new ethers.Contract(ARCPAY, ABI, signer);
     const tx = await c.claim(id); toast('⏳ Claiming…');
     await tx.wait(); toast('✓ Claimed'); loadRecalls();
-  }catch(e){ toast('Claim failed: ' + (e.shortMessage||e.message||'').slice(0,50)); }
+  }catch(e){ toast('Claim failed: ' + errText(e,50)); }
 }
 async function recallPay(id){
   if(!await requireSigner()) return;
@@ -1346,7 +1432,7 @@ async function recallPay(id){
     const c = new ethers.Contract(ARCPAY, ABI, signer);
     const tx = await c.recall(id); toast('⏳ Recalling…');
     await tx.wait(); toast('✓ Funds recalled'); loadRecalls();
-  }catch(e){ toast('Recall failed: ' + (e.shortMessage||e.message||'').slice(0,50)); }
+  }catch(e){ toast('Recall failed: ' + errText(e,50)); }
 }
 
 /* Nothing above this line touches the network. boot() is the only place that
@@ -1384,7 +1470,9 @@ function boot(){
   if(!IS_TESTNET) kpDisableForMainnet();
 
   refreshGas();
-  setInterval(refreshGas, 15000);
+  setInterval(() => { if(!document.hidden) refreshGas(); }, 15000);
+  // A background tab does not need a gas price or a live oracle; resume on return.
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) refreshGas(); });
   checkIncoming();
 
   // A pay-link should land on the payment it is asking for, not the overview.
@@ -1473,7 +1561,7 @@ async function createSub(){
     setStatus('subStatus',`✓ Subscribed — ${escHtml(amt)} USDC ${intervalName(subInterval)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Subscription live');
     loadSubs();
-  }catch(e){ setStatus('subStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+  }catch(e){ setStatus('subStatus','Failed: '+errText(e,90),'err'); }
 }
 
 async function fetchSubs(ids){
@@ -1549,9 +1637,9 @@ async function loadSubs(){
       ? activeMerch.map(s=>subRow(s,false)).join('')
       : '<p class="empty"><b>No subscribers yet</b>Share your address with a plan label and they will show up here.</p>';
   }catch(e){
-    $('mySubsList').innerHTML = '<p class="empty"><b>Could not load</b>' + escHtml((e.shortMessage||e.message||'').slice(0,80)) + '</p>';
+    $('mySubsList').innerHTML = '<p class="empty"><b>Could not load</b>' + errText(e,80) + '</p>';
     $('myMerchList').innerHTML = '';
-    toast('Load failed: '+(e.shortMessage||e.message||'').slice(0,60));
+    toast('Load failed: '+errText(e,60));
   }
 }
 
@@ -1565,7 +1653,7 @@ async function chargeSub(id){
     setStatus('merchStatus',`✓ Charged #${id} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Payment collected');
     loadSubs();
-  }catch(e){ setStatus('merchStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+  }catch(e){ setStatus('merchStatus','Failed: '+errText(e,90),'err'); }
 }
 
 async function cancelSub(id){
@@ -1576,7 +1664,7 @@ async function cancelSub(id){
     await tx.wait();
     toast('✓ Subscription cancelled');
     loadSubs();
-  }catch(e){ toast('Cancel failed: '+(e.shortMessage||e.message||'').slice(0,60)); }
+  }catch(e){ toast('Cancel failed: '+errText(e,60)); }
 }
 
 /* Read the schedules back and count how many actually advanced. This is the
@@ -1611,7 +1699,7 @@ async function collectDue(){
       toast(`Collected ${paid} of ${due.length}`);
     }
     loadSubs();
-  }catch(e){ setStatus('merchStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+  }catch(e){ setStatus('merchStatus','Failed: '+errText(e,90),'err'); }
 }
 
 function toggleAutoCollect(){
@@ -1635,7 +1723,11 @@ function toggleAutoCollect(){
           toast(`Auto-collected ${due.length} payment(s)`);
           loadSubs();
         }
-      }catch{}
+      }catch(e){
+        // Silence here meant a merchant could leave this running for hours
+        // while every pass failed. Say it once, in place, and keep going.
+        setStatus('merchStatus','Auto-collector: last pass failed — ' + errText(e,80), 'err');
+      }
     }, 60000);
   }
 }
@@ -1718,7 +1810,10 @@ async function kpBal(){
 async function kpRefresh(c){
   const maxId = Number(await c.nextId());
   const fresh = [];
-  for (let id = Math.max(1, kpHighestId + 1); id < maxId; id++) fresh.push(id);
+  // Start at 0, not 1: if the contract's counter begins at zero, subscription
+  // #0 was invisible to the agent forever. A read on a non-existent id just
+  // fails and is dropped below, so the extra probe is free.
+  for (let id = kpHighestId === 0 ? 0 : kpHighestId + 1; id < maxId; id++) fresh.push(id);
   kpHighestId = Math.max(kpHighestId, maxId - 1);
 
   const now = Math.floor(Date.now()/1000);
@@ -1794,7 +1889,7 @@ async function kpTick(){
         if(!paid.includes(id)) kpLog(`#${id} not charged — the subscriber revoked their USDC approval or is out of balance.`,'warn');
       }
     }
-  }catch(e){ kpLog('tick error: ' + (e.shortMessage||e.message||'').slice(0,80),'err'); }
+  }catch(e){ kpLog('tick error: ' + errText(e,80),'err'); }
   finally{ kpBusy = false; kpBal(); }
 }
 
@@ -1820,6 +1915,7 @@ function kpStop(){
 async function kpFund(){
   if(!await requireSigner('kpStatus')) return;
   kpInit();
+  if(!kpWallet) return;
   const amt = parseAmount($('kpFundAmt').value || '1');
   if(!amt){ setStatus('kpStatus','Enter a gas amount above zero.','err'); return; }
   try{
@@ -1828,12 +1924,13 @@ async function kpFund(){
     const rc = await tx.wait();
     setStatus('kpStatus', `✓ Agent funded · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     kpBal();
-  }catch(e){ setStatus('kpStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,80),'err'); }
+  }catch(e){ setStatus('kpStatus','Failed: '+errText(e,80),'err'); }
 }
 
 async function kpSweep(){
   if(!requireReady('kpStatus')) return;
   kpInit();
+  if(!kpWallet) return;
   if (!userAddress){ await connect(); if(!userAddress) return; }
   try{
     const bal = await readProvider.getBalance(kpWallet.address);
@@ -1844,7 +1941,7 @@ async function kpSweep(){
     setStatus('kpStatus','✓ Gas swept back to your wallet.','ok');
     kpLog('💸 Excess gas swept to owner.','ok');
     kpBal();
-  }catch(e){ setStatus('kpStatus','Failed: '+(e.shortMessage||e.message||'').slice(0,80),'err'); }
+  }catch(e){ setStatus('kpStatus','Failed: '+errText(e,80),'err'); }
 }
 
 function kpReset(){
@@ -1863,7 +1960,17 @@ const TREASURY = NET.contracts.treasury;
 const EURC = NET.contracts.eurc;
 const PYTH = NET.contracts.pyth;
 const PYTH_EURUSD_ID = NET.pythEurUsdId;
-const HERMES = 'https://hermes.pyth.network/v2/updates/price/latest';
+
+/* Pyth Core was upgraded on 26 Aug 2026 and Hermes now requires an API key.
+   A browser cannot hold that key — anything shipped to the page is public — so
+   the signed update blob is pulled through this site's own /api/pyth function,
+   which keeps PYTH_API_KEY server-side. See api/pyth.js.
+
+   The displayed rate does not go through it at all: it is read straight from
+   the Pyth contract already deployed on Arc, which needs no key and is the very
+   same oracle the treasury settles against. The proxy is only a fallback for
+   display, and a requirement for an actual on-chain rebalance. */
+const HERMES = '/api/pyth';
 const TREASURY_ABI = [
   'function rebalance(bytes[] updateData) payable',
   'function deposit(address token, uint256 amount)',
@@ -1874,7 +1981,13 @@ const TREASURY_ABI = [
   'error NoFreshUpdate()','error PriceFeedNotFound()','error PriceFeedNotFoundWithinRange()','error InvalidArgument()',
   'error InvalidGovernanceMessage()','error InvalidWormholeVaa()','error PriceFeedAlreadyExists()','error InvalidWormholeAddressToSet()'
 ];
-const PYTH_FEE_ABI = ['function getUpdateFee(bytes[] updateData) view returns (uint256)'];
+/* getPriceUnsafe returns the last price the contract stored, with no staleness
+   check — fine for a display that prints its own age, and it is what lets the
+   rate render with no API key at all. */
+const PYTH_READ_ABI = [
+  'function getUpdateFee(bytes[] updateData) view returns (uint256)',
+  'function getPriceUnsafe(bytes32 id) view returns (tuple(int64 price, uint64 conf, int32 expo, uint256 publishTime))'
+];
 const ERC20_T_ABI = [
   'function balanceOf(address) view returns (uint256)',
   'function allowance(address,address) view returns (uint256)',
@@ -1897,25 +2010,59 @@ function renderOwnerWarning(){
     "Run rebalance" is different: that is a swap, and you receive the other side plus a bonus in the same transaction.`;
 }
 
+/* Read the rate the contract itself holds. No key, no third-party host, and it
+   is the number the rebalance will actually be judged against. */
+async function pythPriceOnChain(){
+  const p = new ethers.Contract(PYTH, PYTH_READ_ABI, readProvider);
+  const r = await p.getPriceUnsafe(PYTH_EURUSD_ID);
+  const expo = Number(r.expo);
+  return {
+    price: Number(r.price) * Math.pow(10, expo),
+    conf:  Number(r.conf)  * Math.pow(10, expo),
+    at:    Number(r.publishTime),
+    source: 'on-chain'
+  };
+}
+
+/* Fresher than the on-chain value, but needs PYTH_API_KEY set on the
+   deployment. Used as a display fallback and required for a real rebalance. */
+async function pythPriceOffChain(){
+  const j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}`);
+  const p = j.parsed?.[0]?.price;
+  if(!p) throw new Error('no price in feed');
+  const expo = Number(p.expo);
+  return {
+    price: Number(p.price) * Math.pow(10, expo),
+    conf:  Number(p.conf)  * Math.pow(10, expo),
+    at:    Number(p.publish_time),
+    source: 'hermes'
+  };
+}
+
 async function pythRefresh(){
   if(!booted) return null;
-  $('eurMeta').textContent = 'fetching…';
-  try{
-    const j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}`);
-    const p = j.parsed?.[0]?.price;
-    if(!p) throw new Error('no price in feed');
-    eurUsd = Number(p.price) * Math.pow(10, Number(p.expo));
-    const conf = Number(p.conf) * Math.pow(10, Number(p.expo));
-    const ago = Math.max(0, Math.floor(Date.now()/1000) - Number(p.publish_time));
-    $('eurRate').textContent = eurUsd.toFixed(5);
-    $('eurMeta').textContent = `±${conf.toFixed(5)} · ${ago}s ago`;
-    if(tState) renderHealth();
-    return eurUsd;
-  }catch(e){
-    $('eurMeta').textContent = 'feed error';
-    toast('Pyth fetch failed: ' + (e.message||'').slice(0,50));
-    return null;
+  $('eurMeta').textContent = 'reading…';
+  // On-chain first: it always works. Only reach for the proxy if the feed has
+  // never been pushed to Arc, or the stored price is unreadable.
+  let r = null;
+  try{ r = await pythPriceOnChain(); }
+  catch(_){
+    try{ r = await pythPriceOffChain(); }
+    catch(e){
+      eurUsd = null;
+      $('eurRate').textContent = '—';
+      $('eurMeta').textContent = 'price unavailable';
+      toast('EUR/USD unavailable: ' + (e.message||'').slice(0,60));
+      if(tState) renderHealth();
+      return null;
+    }
   }
+  eurUsd = r.price;
+  const ago = Math.max(0, Math.floor(Date.now()/1000) - r.at);
+  $('eurRate').textContent = eurUsd.toFixed(5);
+  $('eurMeta').textContent = `±${r.conf.toFixed(5)} · ${ago}s ago · ${r.source}`;
+  if(tState) renderHealth();
+  return eurUsd;
 }
 
 function pythAuto(){ if(eurUsd === null) pythRefresh(); }
@@ -1926,15 +2073,23 @@ function pythToggleLive(){
     $('pythLiveBtn').textContent = '📡 Live feed: OFF';
   }else{
     pythRefresh();
-    pythTimer = setInterval(pythRefresh, 10000);
+    pythTimer = setInterval(() => { if(!document.hidden) pythRefresh(); }, 10000);
     $('pythLiveBtn').textContent = '📡 Live feed: ON';
     toast('Live EUR/USD — refreshing every 10s');
   }
 }
 
 // Pull the signed Pyth update blob (VAA) needed to move the price on-chain.
+// This one cannot come from the contract — it is the thing that updates it —
+// so it always goes through the proxy and therefore always needs the API key.
 async function pythUpdateData(){
-  const j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}&encoding=hex`);
+  let j;
+  try{
+    j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}&encoding=hex`);
+  }catch(e){
+    throw new Error('Could not fetch a signed Pyth update — ' + (e.message || 'proxy unreachable') +
+                    '. Set PYTH_API_KEY on this deployment (see api/pyth.js).');
+  }
   const arr = j.binary?.data || [];
   if(!arr.length) throw new Error('no Pyth update data');
   return arr.map(h => h.startsWith('0x') ? h : '0x'+h);
@@ -1960,7 +2115,7 @@ async function treasuryScan(){
     if(eurUsd === null) await pythRefresh();
     renderHealth();
     setStatus('tStatus','');
-  }catch(e){ setStatus('tStatus','Read failed: '+(e.shortMessage||e.message||'').slice(0,90),'err'); }
+  }catch(e){ setStatus('tStatus','Read failed: '+errText(e,90),'err'); }
 }
 
 // Mirror the contract's own valuation: value both legs in USD, compare the USDC share to target.
@@ -1974,12 +2129,28 @@ function treasuryMath(){
 }
 
 function renderHealth(){
-  if(!tState || eurUsd === null) return;
-  const s = tState, m = treasuryMath();
+  if(!tState) return;
+  const s = tState;
+
+  // Balances, target and pause state are on-chain facts and do not need a
+  // price. Only the split, the drift and the verdict do — so a missing feed
+  // blanks those three lines instead of the whole card.
   $('tUsdc').textContent = s.usdc.toLocaleString('en-US',{maximumFractionDigits:2}) + ' USDC';
   $('tEurc').textContent = s.eurc.toLocaleString('en-US',{maximumFractionDigits:2}) + ' EURC';
-  $('tAlloc').textContent = (m.curBps/100).toFixed(1)+'% USDC · '+((10000-m.curBps)/100).toFixed(1)+'% EURC';
   $('tTarget').textContent = (s.targetBps/100)+'% USDC ±'+(s.driftBps/100)+'%';
+
+  if(eurUsd === null){
+    $('tAlloc').textContent = '— / —';
+    $('tDrift').innerHTML = '<span style="color:var(--muted)">needs EUR/USD</span>';
+    $('tVerdict').innerHTML = s.paused
+      ? '<span style="color:var(--red)">PAUSED by owner</span>'
+      : '<span style="color:var(--muted)">BALANCES READ · waiting on the price feed</span>';
+    $('tKeeper').innerHTML = '';
+    return;
+  }
+
+  const m = treasuryMath();
+  $('tAlloc').textContent = (m.curBps/100).toFixed(1)+'% USDC · '+((10000-m.curBps)/100).toFixed(1)+'% EURC';
   $('tDrift').innerHTML = `<span style="color:${m.inBand?'var(--green)':'var(--amber)'}">${(m.drift/100).toFixed(2)}%</span>`;
   if(s.paused)               $('tVerdict').innerHTML = '<span style="color:var(--red)">PAUSED by owner</span>';
   else if(m.total === 0)     $('tVerdict').innerHTML = '<span style="color:var(--muted)">EMPTY — fund the treasury below</span>';
@@ -2024,7 +2195,7 @@ async function treasuryDeposit(which){
     setStatus('tStatus',`✓ Funded ${amt} ${sym} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast(`✓ Treasury funded (${sym})`);
     treasuryScan();
-  }catch(e){ setStatus('tStatus','Deposit failed: '+(e.shortMessage||e.message||'').slice(0,100),'err'); }
+  }catch(e){ setStatus('tStatus','Deposit failed: '+errText(e,100),'err'); }
 }
 
 async function treasuryRebalance(){
@@ -2033,11 +2204,15 @@ async function treasuryRebalance(){
     await treasuryScan();
     if(!tState) return;
     if(tState.paused){ setStatus('tStatus','Agent is paused by the owner.','err'); return; }
+    if(eurUsd === null){
+      setStatus('tStatus','No EUR/USD price — cannot size a rebalance. Check the feed above first.','err');
+      return;
+    }
     const m = treasuryMath();
 
     setStatus('tStatus','Pulling a fresh Pyth update…');
     const updateData = await pythUpdateData();
-    const pyth = new ethers.Contract(PYTH, PYTH_FEE_ABI, readProvider);
+    const pyth = new ethers.Contract(PYTH, PYTH_READ_ABI, readProvider);
     const fee = await pyth.getUpdateFee(updateData);
 
     // Out of band → a real swap happens and the keeper (you) must front the short side.
@@ -2076,7 +2251,7 @@ async function treasuryRebalance(){
     setStatus('tStatus',`✓ Agent ran · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Treasury agent executed');
     treasuryScan();
-  }catch(e){ setStatus('tStatus','Rebalance failed: '+(e.shortMessage||e.message||'').slice(0,120),'err'); }
+  }catch(e){ setStatus('tStatus','Rebalance failed: '+errText(e,140),'err'); }
 }
 
 window.pythRefresh=pythRefresh; window.pythAuto=pythAuto; window.pythToggleLive=pythToggleLive;
