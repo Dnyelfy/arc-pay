@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { setup, waitBooted, goTab } = require('./harness');
+const { setup, waitBooted, goTab, ACCOUNT } = require('./harness');
 
 test.beforeEach(async ({ page }) => {
   await setup(page);
@@ -80,8 +80,57 @@ test.describe('form validation', () => {
     await expect(page.locator('#subStatus')).toHaveText(/above zero/i);
   });
 
-  test('treasury deposit refuses a non-numeric amount', async ({ page }) => {
+  /* Funding is owner-only: deposit() is open to anyone but withdraw() is
+     onlyOwner, so a stranger's deposit is an irreversible gift. The control is
+     withheld rather than shown behind a warning. */
+  test('the fund controls stay closed while the treasury owner is unknown', async ({ page }) => {
     await goTab(page, 'treasury');
+    await expect(page.locator('#tFundRow')).toBeHidden();
+    await expect(page.locator('#tFundLocked')).toContainText(/owner-only|Refresh health/i);
+  });
+
+  test('funding from a wallet that is not the owner is refused, not just warned', async ({ page }) => {
+    await goTab(page, 'treasury');
+    // Reach past the hidden control the way a console or a stale page could:
+    // the guard has to live in the function, not only in the markup.
+    await page.evaluate(() => {
+      document.getElementById('tDepAmt').value = '50';
+      return window.treasuryDeposit('usdc');
+    });
+    await expect(page.locator('#tStatus')).toHaveText(/owner-only|Refresh health/i);
+  });
+});
+
+test.describe('treasury funding, as the owner', () => {
+  const OWNER_WORD = '0x' + '00'.repeat(12) + ACCOUNT.slice(2);
+  // getStatus() → (usdcBal, eurcBal, targetBps, driftBps, maxConfBps, bonusBps, paused)
+  const STATUS = '0x' + [
+    (5000e6).toString(16).padStart(64, '0'),   // 5000 USDC
+    (5000e6).toString(16).padStart(64, '0'),   // 5000 EURC
+    (6000).toString(16).padStart(64, '0'),
+    (200).toString(16).padStart(64, '0'),
+    (100).toString(16).padStart(64, '0'),
+    (25).toString(16).padStart(64, '0'),
+    ''.padStart(64, '0')                       // not paused
+  ].join('');
+
+  test.beforeEach(async ({ page }) => {
+    await setup(page, { rpc: { eth_call: params => {
+      const data = (params && params[0] && params[0].data) || '';
+      if (data.startsWith('0x8da5cb5b')) return OWNER_WORD;   // owner()
+      if (data.startsWith('0x4e69d560')) return STATUS;       // getStatus()
+      return '0x';
+    } } });
+    await page.goto('/index.html');
+    await waitBooted(page);
+  });
+
+  test('the owner is offered the fund controls, and the amount is still validated', async ({ page }) => {
+    await goTab(page, 'treasury');
+    await page.click('button:has-text("Connect")');
+    await page.click('button:has-text("Refresh health")');
+    await expect(page.locator('#tFundRow')).toBeVisible();
+
     await page.fill('#tDepAmt', 'abc');
     await page.click('button:has-text("Fund USDC")');
     await expect(page.locator('#tStatus')).toHaveText(/above zero/i);
