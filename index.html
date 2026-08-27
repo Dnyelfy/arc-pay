@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1740,9 +1739,9 @@ const KP_ABI = [
   'function chargeMany(uint256[] ids)',
   'function getSub(uint256 id) view returns (address subscriber, address merchant, uint96 amount, uint32 interval, uint40 nextChargeAt, bool active, string label)'
 ];
-let kpWallet = null, kpTimer = null, kpBusy = false;
+let kpWallet = null, kpTimer = null, kpBusy = false, kpIdleLogged = false;
 let kpSubs = new Map();        // id -> cached subscription row
-let kpHighestId = 0;           // highest id already discovered
+let kpScannedTo = -1;          // highest id already looked at (-1 = nothing yet)
 let kpGasWarned = false;
 const KP_BATCH = 25;           // ids charged per chargeMany call
 const KP_MIN_GAS = 0.05;       // below this the agent stops trying and asks to be funded
@@ -1810,11 +1809,12 @@ async function kpBal(){
 async function kpRefresh(c){
   const maxId = Number(await c.nextId());
   const fresh = [];
-  // Start at 0, not 1: if the contract's counter begins at zero, subscription
-  // #0 was invisible to the agent forever. A read on a non-existent id just
-  // fails and is dropped below, so the extra probe is free.
-  for (let id = kpHighestId === 0 ? 0 : kpHighestId + 1; id < maxId; id++) fresh.push(id);
-  kpHighestId = Math.max(kpHighestId, maxId - 1);
+  // Scan from 0 the first time: if the contract's counter begins at zero,
+  // subscription #0 was invisible to the agent forever. Track what has been
+  // looked at separately from the highest id, or an empty contract re-probes
+  // the same id every tick.
+  for (let id = kpScannedTo + 1; id < maxId; id++) fresh.push(id);
+  kpScannedTo = Math.max(kpScannedTo, maxId - 1);
 
   const now = Math.floor(Date.now()/1000);
   const stale = [...kpSubs.entries()]
@@ -1822,7 +1822,7 @@ async function kpRefresh(c){
     .map(([id]) => id);
 
   const ids = [...new Set([...fresh, ...stale])];
-  if (fresh.length) kpLog(`📇 ${fresh.length} new subscription(s) discovered (up to #${kpHighestId}).`);
+  if (fresh.length) kpLog(`📇 ${fresh.length} new subscription id(s) discovered (up to #${kpScannedTo}).`);
 
   await inBatches(ids, 10, async id => {
     try{
@@ -1856,7 +1856,17 @@ async function kpTick(){
 
     const now = Math.floor(Date.now()/1000);
     const due = [...kpSubs.entries()].filter(([, v]) => v.active && now >= v.nextChargeAt);
-    if (!due.length) return;
+    if (!due.length){
+      // Say it once, not every 15 seconds, so the terminal shows an idle agent
+      // rather than an empty one.
+      if (!kpIdleLogged){
+        const live = [...kpSubs.values()].filter(v => v.active).length;
+        kpLog(live ? `⏸ ${live} active subscription(s), none due yet — idling.` : '⏸ No active subscriptions — idling.');
+        kpIdleLogged = true;
+      }
+      return;
+    }
+    kpIdleLogged = false;
 
     for (let i = 0; i < due.length; i += KP_BATCH){
       const slice = due.slice(i, i + KP_BATCH);
@@ -1893,17 +1903,75 @@ async function kpTick(){
   finally{ kpBusy = false; kpBal(); }
 }
 
-function kpStart(){
+/* "The agent isn't doing anything" has several very different causes and they
+   all look identical from outside: no gas, a contract that cannot be
+   enumerated, nothing actually due, or subscribers who revoked approval. Run
+   the checks once at startup and name the one that applies, so the terminal
+   answers the question instead of the person having to guess. */
+async function kpPreflight(){
+  kpLog('— preflight —');
+  let ok = true;
+
+  const gas = Number(formatNative(await readProvider.getBalance(kpWallet.address).catch(()=>0n)));
+  if (gas < KP_MIN_GAS){
+    kpLog(`⛽ Gas balance is ${gas.toFixed(4)} ${NET.native.symbol}, below the ${KP_MIN_GAS} minimum. Fund the agent above — it cannot send a transaction without it.`,'err');
+    ok = false;
+  } else {
+    kpLog(`⛽ Gas ${gas.toFixed(4)} ${NET.native.symbol} — enough to work.`,'ok');
+  }
+
+  const c = new ethers.Contract(ARCSUB, KP_ABI, readProvider);
+  let maxId = null;
+  try{
+    maxId = Number(await c.nextId());
+    kpLog(`📇 Subscription contract answered nextId() = ${maxId}.`,'ok');
+  }catch(e){
+    kpLog(`✖ The contract at ${short(ARCSUB)} did not answer nextId(). Without it the agent cannot list subscriptions, so it will never charge anything. Check that this address is the subscriptions contract and that it exposes nextId().`,'err');
+    kpLog('   Meanwhile the "Collect everything due" button on the Subscriptions tab still works — it asks the contract for your own subscriptions directly.','warn');
+    return false;
+  }
+
+  if (maxId === 0){
+    kpLog('… The contract has no subscriptions yet. Create one on the Subscriptions tab and the agent will pick it up within 15s.','warn');
+    return ok;
+  }
+
+  // Look at what is actually there, so "nothing happened" is explained.
+  const ids = [];
+  for (let id = 0; id < maxId; id++) ids.push(id);
+  let live = 0, due = 0, gone = 0;
+  const now = Math.floor(Date.now()/1000);
+  await inBatches(ids.slice(0, 200), 10, async id => {
+    try{
+      const s = await c.getSub(id);
+      if (s.active){ live++; if (now >= Number(s.nextChargeAt)) due++; }
+    }catch{ gone++; }
+  });
+  kpLog(`📊 ${live} active subscription(s), ${due} due right now${gone?` · ${gone} id(s) unreadable`:''}.`, due ? 'ok' : '');
+  if (live && !due) kpLog('   Nothing is due yet — the agent will idle until a billing period comes round. That is working, not stuck.','warn');
+  if (!live) kpLog('   No active subscriptions, so there is nothing to charge.','warn');
+  return ok;
+}
+
+async function kpStart(){
   if (!kpAllowed()) return;
   if (!requireReady('kpStatus')) return;
   kpInit();
   if (!kpWallet) return;
   if (kpTimer) return;
+  $('kpState').textContent = 'agent starting — running checks';
+  kpLog('▶ Agent started.','ok');
+  let ok = false;
+  try{ ok = await kpPreflight(); }
+  catch(e){ kpLog('preflight failed: ' + errText(e,90),'err'); }
+  if(!ok){
+    $('kpState').textContent = 'agent idle — see terminal';
+    kpLog('Agent will keep scanning anyway; fix the item above and it resumes on its own.','warn');
+  }
   kpTimer = setInterval(kpTick, 15000);
   kpTick();
   $('kpState').textContent = 'agent online — scanning every 15s';
   $('kpDot').classList.add('on');
-  kpLog('▶ Agent started.','ok');
 }
 function kpStop(){
   clearInterval(kpTimer); kpTimer = null;
@@ -1949,7 +2017,7 @@ function kpReset(){
   if (!confirm('Generate a NEW agent key? Any gas left on the old one becomes unreachable — sweep it back first!')) return;
   localStorage.removeItem(KP_KEY);
   kpWallet = null; kpStop();
-  kpSubs.clear(); kpHighestId = 0; kpGasWarned = false;
+  kpSubs.clear(); kpScannedTo = -1; kpGasWarned = false; kpIdleLogged = false;
   kpInit();
 }
 
@@ -1994,6 +2062,17 @@ const ERC20_T_ABI = [
   'function approve(address,uint256) returns (bool)'
 ];
 let eurUsd = null, pythTimer = null, tState = null, tOwner = null;
+/* The contract stores the last price pushed to it, which can be hours old if
+   nobody has run an update. Past this, stop presenting it as a live rate. */
+const PRICE_STALE_AFTER = 3600;   // seconds
+let eurUsdStale = false;
+
+function fmtAge(s){
+  if(s < 90) return s + 's ago';
+  if(s < 5400) return Math.round(s/60) + 'm ago';
+  if(s < 172800) return Math.round(s/3600) + 'h ago';
+  return Math.round(s/86400) + 'd ago';
+}
 
 /* The treasury takes deposits from anyone but only its owner can withdraw, so
    funding it is a one-way transfer unless you are that owner. Say so where the
@@ -2049,8 +2128,9 @@ async function pythRefresh(){
   catch(_){
     try{ r = await pythPriceOffChain(); }
     catch(e){
-      eurUsd = null;
+      eurUsd = null; eurUsdStale = false;
       $('eurRate').textContent = '—';
+      $('eurRate').style.color = 'var(--muted)';
       $('eurMeta').textContent = 'price unavailable';
       toast('EUR/USD unavailable: ' + (e.message||'').slice(0,60));
       if(tState) renderHealth();
@@ -2059,8 +2139,14 @@ async function pythRefresh(){
   }
   eurUsd = r.price;
   const ago = Math.max(0, Math.floor(Date.now()/1000) - r.at);
+  eurUsdStale = ago > PRICE_STALE_AFTER;
   $('eurRate').textContent = eurUsd.toFixed(5);
-  $('eurMeta').textContent = `±${r.conf.toFixed(5)} · ${ago}s ago · ${r.source}`;
+  // A price this old is not a live rate, and colouring it like one invites a
+  // rebalance sized off a figure from yesterday. Say the age in a unit a human
+  // reads, and drop the green when it stops meaning "now".
+  $('eurRate').style.color = eurUsdStale ? 'var(--amber)' : 'var(--green)';
+  $('eurMeta').innerHTML = `±${r.conf.toFixed(5)} · ${fmtAge(ago)} · ${escHtml(r.source)}` +
+    (eurUsdStale ? ' · <span style="color:var(--amber)">stale, no fresh update pushed to Arc</span>' : '');
   if(tState) renderHealth();
   return eurUsd;
 }
@@ -2151,11 +2237,19 @@ function renderHealth(){
 
   const m = treasuryMath();
   $('tAlloc').textContent = (m.curBps/100).toFixed(1)+'% USDC · '+((10000-m.curBps)/100).toFixed(1)+'% EURC';
+  if(eurUsdStale){
+    // The split below is arithmetic on a rate nobody refreshed. Show it, but
+    // never let it read as a settled fact.
+    $('tAlloc').textContent += ' *';
+  }
   $('tDrift').innerHTML = `<span style="color:${m.inBand?'var(--green)':'var(--amber)'}">${(m.drift/100).toFixed(2)}%</span>`;
   if(s.paused)               $('tVerdict').innerHTML = '<span style="color:var(--red)">PAUSED by owner</span>';
   else if(m.total === 0)     $('tVerdict').innerHTML = '<span style="color:var(--muted)">EMPTY — fund the treasury below</span>';
   else if(m.inBand)          $('tVerdict').innerHTML = '<span style="color:var(--green)">IN BAND — agent rests</span>';
   else                       $('tVerdict').innerHTML = `<span style="color:var(--amber)">REBALANCE DUE — over ${m.overUsdc?'USDC':'EURC'}</span>`;
+  if(eurUsdStale && !s.paused){
+    $('tVerdict').innerHTML += '<br/><span style="color:var(--amber)">* computed from a stale EUR/USD price</span>';
+  }
 
   const kp = $('tKeeper');
   if(!s.paused && m.total > 0 && !m.inBand){
