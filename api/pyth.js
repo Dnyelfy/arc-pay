@@ -1,27 +1,34 @@
 /* Vercel serverless function — /api/pyth
  *
- * Pyth Core was upgraded on 26 Aug 2026 and Hermes now requires an API key.
- * A browser cannot hold that key: anything shipped to the page is public, and
- * a leaked key is someone else burning your quota. So the key lives here, in
- * a server-side environment variable, and the page calls its own origin.
+ * This file only does anything on a host that runs serverless functions. On
+ * plain static hosting (GitHub Pages and friends) /api/pyth is a 404, which is
+ * fine — index.html treats this proxy as the first of several Pyth sources and
+ * falls through to public Hermes on its own. Do not make it the only source.
  *
- * Setup, once:
- *   1. Get a key at https://pythdata.app/signup
+ * Its reason to exist is the API key. A browser cannot hold one: anything
+ * shipped to the page is public, and a leaked key is someone else burning your
+ * quota. So the key lives here, in a server-side environment variable, and the
+ * page calls its own origin. With no key set, this forwards to public Hermes
+ * unauthenticated instead of failing.
+ *
+ * To use a key:
+ *   1. Get one from your Pyth data provider.
  *   2. Vercel → project → Settings → Environment Variables
  *      Name: PYTH_API_KEY   Value: <your key>   (all environments)
  *   3. Redeploy.
  *
- * Calling CORS is gone too — same origin, so no preflight.
+ * CORS does not apply on the proxied path — same origin, so no preflight.
  */
 
-const UPSTREAM = 'https://pyth.dourolabs.app/hermes/v2/updates/price/latest';
+const KEYED   = 'https://pyth.dourolabs.app/hermes/v2/updates/price/latest';
+const PUBLIC  = 'https://hermes.pyth.network/v2/updates/price/latest';
 
 export default async function handler(req, res) {
+  // A missing key is not fatal: fall through to public Hermes and let it decide.
+  // Returning 500 here made an unconfigured deployment strictly worse than no
+  // proxy at all, because the page could no longer reach Pyth by any route.
   const key = process.env.PYTH_API_KEY;
-  if (!key) {
-    res.status(500).json({ error: 'PYTH_API_KEY is not set on this deployment.' });
-    return;
-  }
+  const upstream_url = key ? KEYED : PUBLIC;
 
   // Accept both ?ids[]=0x… (what the page sends) and ?ids=0x…
   const raw = req.query['ids[]'] ?? req.query.ids ?? [];
@@ -45,8 +52,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const upstream = await fetch(`${UPSTREAM}?${qs.toString()}`, {
-      headers: { Authorization: `Bearer ${key}`, accept: 'application/json' }
+    const upstream = await fetch(`${upstream_url}?${qs.toString()}`, {
+      headers: key
+        ? { Authorization: `Bearer ${key}`, accept: 'application/json' }
+        : { accept: 'application/json' }
     });
     const body = await upstream.text();
 

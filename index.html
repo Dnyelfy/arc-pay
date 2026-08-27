@@ -514,7 +514,7 @@ body.engaged .hero{display:none;}
         <button class="connect-btn" onclick="pythRefresh()">↻ Refresh price</button>
         <button class="connect-btn" id="pythLiveBtn" onclick="pythToggleLive()">📡 Live feed: OFF</button>
       </div>
-      <div class="hint" style="margin-top:10px;">Feed <span style="color:var(--muted)">0xa995…c30b</span> · read from the Pyth contract on Arc, with the signed off-chain update pulled through this site's own endpoint.</div>
+      <div class="hint" style="margin-top:10px;">Feed <span style="color:var(--muted)">0xa995…c30b</span> · read from the Pyth contract on Arc; a rebalance additionally pulls a signed update from Hermes, or from this site's own endpoint where one is deployed.</div>
     </div>
 
     <div class="card">
@@ -1178,6 +1178,7 @@ async function loadSepoliaMessages(){
    the user made this morning. Newest first means a truncated scan still shows
    the receipts that matter. */
 const LOG_MIN_CHUNK = 2000;      // floor — below this, treat it as a real failure
+const LOG_MAX_CHUNK = 100000;    // ceiling — no node needs a wider single query
 const LOG_MAX_CALLS = 60;        // ceiling on round trips per load
 const addrTopic = a => ethers.zeroPadValue(ethers.getAddress(a), 32);
 let logScanTruncated = false;
@@ -1186,9 +1187,12 @@ let logChunkSize = 0;            // learned once per session, reused after
 const takeLog = l => ({ topics:[...l.topics], data:l.data,
   transactionHash:l.transactionHash, blockNumber:l.blockNumber, index:l.index });
 
-/* Find the widest window the node accepts, by halving from the whole chain. */
+/* Find the widest window the node accepts, by halving from LOG_MAX_CHUNK.
+   Starting from the whole chain instead spent a dozen round trips walking down
+   from millions of blocks, and a node that answered the first probe handed back
+   every log the contract ever emitted in one response. */
 async function learnChunk(topics, latest, spend){
-  let span = latest + 1;
+  let span = Math.min(LOG_MAX_CHUNK, latest + 1);
   while(span > LOG_MIN_CHUNK){
     spend();                                  // failed probes cost round trips too
     try{
@@ -1214,20 +1218,29 @@ async function queryLogs(topicSets){
   while(to >= 0){
     if(calls + topicSets.length > LOG_MAX_CALLS){ logScanTruncated = true; break; }
     const from = Math.max(0, to - logChunkSize + 1);
+    // Hold this window's logs aside until every topic set in it has answered.
+    // Pushing them as they arrive meant a mid-window failure left half a window
+    // in the results, and the retry then duplicated the half that did land.
+    const window = [];
+    let shrank = false;
     for(const topics of topicSets){
       calls++;
       try{
         const logs = await readProvider.getLogs({ address: ARCPAY, topics, fromBlock: from, toBlock: to });
-        out.push(...logs.map(takeLog));
+        window.push(...logs.map(takeLog));
       }catch(e){
-        // The node moved the goalposts mid-scan. Shrink and retry this window
-        // once; if it still refuses, hand over to the explorer fallback.
+        // The node moved the goalposts mid-scan. Shrink and retry this same
+        // window; if it refuses even at the floor, hand over to the explorer.
         if(logChunkSize <= LOG_MIN_CHUNK) throw e;
         logChunkSize = Math.max(LOG_MIN_CHUNK, Math.floor(logChunkSize / 2));
-        to = Math.min(latest, to + logChunkSize);   // redo from here at the smaller size
+        shrank = true;
         break;
       }
     }
+    // `to` is deliberately unchanged: the next pass redoes this window at the
+    // smaller size. Advancing here is what silently dropped the failed range.
+    if(shrank) continue;
+    out.push(...window);
     if(from === 0) break;
     to = from - 1;
   }
@@ -1810,10 +1823,12 @@ async function kpBal(){
 async function kpRefresh(c){
   const maxId = Number(await c.nextId());
   const fresh = [];
-  // Start at 0, not 1: if the contract's counter begins at zero, subscription
-  // #0 was invisible to the agent forever. A read on a non-existent id just
-  // fails and is dropped below, so the extra probe is free.
-  for (let id = kpHighestId === 0 ? 0 : kpHighestId + 1; id < maxId; id++) fresh.push(id);
+  // ArcSub starts its counter at 1, so there is no subscription #0 to find.
+  // Probing for one was not free either: getSub on an unused id returns an
+  // empty struct rather than reverting, so id 0 was cached as a dead row, and
+  // with no subscriptions yet kpHighestId stayed 0 and every tick re-announced
+  // the same phantom "1 new subscription discovered".
+  for (let id = kpHighestId + 1; id < maxId; id++) fresh.push(id);
   kpHighestId = Math.max(kpHighestId, maxId - 1);
 
   const now = Math.floor(Date.now()/1000);
@@ -1961,16 +1976,37 @@ const EURC = NET.contracts.eurc;
 const PYTH = NET.contracts.pyth;
 const PYTH_EURUSD_ID = NET.pythEurUsdId;
 
-/* Pyth Core was upgraded on 26 Aug 2026 and Hermes now requires an API key.
-   A browser cannot hold that key — anything shipped to the page is public — so
-   the signed update blob is pulled through this site's own /api/pyth function,
-   which keeps PYTH_API_KEY server-side. See api/pyth.js.
+/* Where a signed Pyth update can come from, in the order we try.
 
-   The displayed rate does not go through it at all: it is read straight from
-   the Pyth contract already deployed on Arc, which needs no key and is the very
-   same oracle the treasury settles against. The proxy is only a fallback for
-   display, and a requirement for an actual on-chain rebalance. */
-const HERMES = '/api/pyth';
+   /api/pyth is this site's own function (see api/pyth.js), which holds
+   PYTH_API_KEY server-side. It only exists on a deployment that actually runs
+   serverless functions — on plain static hosting the path is a 404, so it
+   cannot be the only source or the treasury agent is dead on arrival.
+
+   Public Hermes needs no key. Whether it still serves this feed unauthenticated
+   is exactly the thing we cannot know from inside the page, so we ask it rather
+   than assume: if it answers we are done, if it rejects us the proxy above
+   already had its turn.
+
+   The displayed rate usually needs neither — pythPriceOnChain reads the price
+   the Pyth contract on Arc already holds, which is the same oracle the treasury
+   settles against. These endpoints are the display fallback, and the hard
+   requirement for an on-chain rebalance. */
+const PYTH_SOURCES = [
+  '/api/pyth',
+  'https://hermes.pyth.network/v2/updates/price/latest'
+];
+
+/* Try each source in turn; report them all if none answers, because "the proxy
+   404s and Hermes wants a key" is a very different fix from "you are offline". */
+async function pythFetch(params){
+  const fails = [];
+  for(const base of PYTH_SOURCES){
+    try{ return await fetchJson(`${base}?${params}`); }
+    catch(e){ fails.push(`${base.startsWith('/') ? 'proxy' : 'hermes'}: ${(e.message||e).toString().slice(0,60)}`); }
+  }
+  throw new Error(fails.join(' · '));
+}
 const TREASURY_ABI = [
   'function rebalance(bytes[] updateData) payable',
   'function deposit(address token, uint256 amount)',
@@ -2024,10 +2060,10 @@ async function pythPriceOnChain(){
   };
 }
 
-/* Fresher than the on-chain value, but needs PYTH_API_KEY set on the
-   deployment. Used as a display fallback and required for a real rebalance. */
+/* Fresher than the on-chain value, but depends on an off-chain source being
+   reachable. Used as a display fallback; the rebalance path needs it outright. */
 async function pythPriceOffChain(){
-  const j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}`);
+  const j = await pythFetch(`ids[]=${PYTH_EURUSD_ID}`);
   const p = j.parsed?.[0]?.price;
   if(!p) throw new Error('no price in feed');
   const expo = Number(p.expo);
@@ -2081,14 +2117,14 @@ function pythToggleLive(){
 
 // Pull the signed Pyth update blob (VAA) needed to move the price on-chain.
 // This one cannot come from the contract — it is the thing that updates it —
-// so it always goes through the proxy and therefore always needs the API key.
+// so a rebalance is only possible while one of PYTH_SOURCES answers.
 async function pythUpdateData(){
   let j;
   try{
-    j = await fetchJson(`${HERMES}?ids[]=${PYTH_EURUSD_ID}&encoding=hex`);
+    j = await pythFetch(`ids[]=${PYTH_EURUSD_ID}&encoding=hex`);
   }catch(e){
-    throw new Error('Could not fetch a signed Pyth update — ' + (e.message || 'proxy unreachable') +
-                    '. Set PYTH_API_KEY on this deployment (see api/pyth.js).');
+    throw new Error('Could not fetch a signed Pyth update (' + (e.message || 'no source answered') +
+                    '). If public Hermes now needs a key, deploy api/pyth.js and set PYTH_API_KEY.');
   }
   const arr = j.binary?.data || [];
   if(!arr.length) throw new Error('no Pyth update data');
