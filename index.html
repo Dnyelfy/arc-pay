@@ -481,32 +481,11 @@ body.engaged .hero{display:none;}
       <input id="subLabel" placeholder="Pro plan / kira / DAO aidatı" maxlength="64"/>
       <div class="row">
         <button class="connect-btn primary" onclick="createSub()">Subscribe — first period charged now</button>
-      </div>
-      <div class="status" id="subStatus"></div>
-      <div class="hint">Funds never leave your wallet upfront. You approve USDC once; each period is pulled only when due. Cancel anytime — one click, on-chain. A subscription cannot be created to your own address, so the merchant must be a different wallet. Pick <b>5 min</b> if you want to watch the billing agent collect a period during a demo — a monthly plan will not come due until a month has passed.</div>
-    </div>
-
-    <div class="card">
-      <h2>Share a subscribe link</h2>
-      <p style="color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:var(--s3);">Fill in the plan you want to sell and send the link. Whoever opens it lands on this tab with the form already filled and one button to press — they never type your address.</p>
-      <label for="slTo">Your merchant address — who gets paid</label>
-      <input id="slTo" placeholder="0x…" spellcheck="false"/>
-      <label for="slAmt">Amount per period (USDC)</label>
-      <input id="slAmt" placeholder="10.00" inputmode="decimal"/>
-      <label id="slIntervalLabel">Billing period</label>
-      <div class="row" id="slIntervalRow" role="group" aria-labelledby="slIntervalLabel">
-        <button class="connect-btn" data-sec="300" onclick="pickLinkInterval(this)">5 min (test)</button>
-        <button class="connect-btn" data-sec="86400" onclick="pickLinkInterval(this)">Daily</button>
-        <button class="connect-btn" data-sec="604800" onclick="pickLinkInterval(this)">Weekly</button>
-        <button class="connect-btn primary" data-sec="2592000" onclick="pickLinkInterval(this)">Monthly</button>
-      </div>
-      <label for="slLabel">Plan label</label>
-      <input id="slLabel" placeholder="Pro plan" maxlength="64"/>
-      <div class="row">
-        <button class="connect-btn primary" onclick="makeSubLink()">🔗 Create subscribe link</button>
+        <button class="connect-btn" onclick="makeSubLink()">🔗 Copy as subscribe link</button>
         <button class="connect-btn" onclick="useMyAddress()">Use my address</button>
       </div>
-      <div class="status" id="slStatus"></div>
+      <div class="status" id="subStatus"></div>
+      <div class="hint">Funds never leave your wallet upfront. You approve USDC once; each period is pulled only when due. Cancel anytime — one click, on-chain. A subscription cannot be created to your own address, so the merchant must be a different wallet. Selling a plan? Put your own address in and copy it as a link instead — whoever opens it lands here with the form already filled. Pick <b>5 min</b> if you want to watch the billing agent collect a period during a demo.</div>
     </div>
 
     <div class="card">
@@ -941,7 +920,6 @@ async function connect(){
     const bal = await provider.getBalance(userAddress);
     $('balPill').textContent = Number(formatNative(bal)).toFixed(2) + ' ' + NET.native.symbol;
     $('balPill').style.display = '';
-    if($('slTo') && !$('slTo').value) $('slTo').value = userAddress;
     toast('✓ Connected');
     // The lists are per-wallet; a new wallet invalidates whatever is cached.
     if(subsLoadedFor && subsLoadedFor !== userAddress){ mySubsCache = []; merchSubsCache = []; subsLoadedFor = null; }
@@ -1057,21 +1035,21 @@ function payIncoming(){ if(incoming) sendPay(incoming.to, incoming.amt, incoming
    amount, so the person who opens it presses one button instead of typing an
    address, an amount and a period into the form by hand. */
 function makeSubLink(){
-  const to = validAddr($('slTo').value);
-  const amt = parseAmount($('slAmt').value);
-  const label = $('slLabel').value.trim().slice(0,64);
-  if(!to){ setStatus('slStatus','A subscribe link needs a valid merchant address.','err'); return; }
-  if(!amt){ setStatus('slStatus','A subscribe link needs an amount above zero.','err'); return; }
+  const to = validAddr($('subTo').value);
+  const amt = parseAmount($('subAmt').value);
+  const label = $('subLabel').value.trim().slice(0,64);
+  if(!to){ setStatus('subStatus','A subscribe link needs a valid merchant address.','err'); return; }
+  if(!amt){ setStatus('subStatus','A subscribe link needs an amount above zero.','err'); return; }
   const u = new URL(location.origin + location.pathname);
   u.searchParams.set('sub', to);
   u.searchParams.set('samt', amt);
-  u.searchParams.set('sint', String(subLinkInterval));
+  u.searchParams.set('sint', String(subInterval));
   if(label) u.searchParams.set('slabel', label);
   u.hash = 'subs';
   const link = u.toString();
   navigator.clipboard.writeText(link)
-    .then(()=>{ setStatus('slStatus','🔗 Subscribe link copied — send it to the customer.','ok'); toast('✓ Link copied'); })
-    .catch(()=>{ setStatus('slStatus','Link: ' + escHtml(link),'ok'); });
+    .then(()=>{ setStatus('subStatus','🔗 Subscribe link copied — send it to the customer.','ok'); toast('✓ Link copied'); })
+    .catch(()=>{ setStatus('subStatus','Link: ' + escHtml(link),'ok'); });
 }
 
 let incomingSub = null;
@@ -1616,7 +1594,6 @@ const ERC20_MIN_ABI = [
   'function allowance(address owner, address spender) view returns (uint256)'
 ];
 let subInterval = 2592000;
-let subLinkInterval = 2592000;
 /* The two lists are state, not markup. They survive a tab switch, so reopening
    the tab repaints instantly instead of showing an empty card until someone
    presses Refresh. */
@@ -1638,14 +1615,9 @@ function applyInterval(sec){
   document.querySelectorAll('#subIntervalRow .connect-btn').forEach(b=>b.classList.remove('primary'));
   subInterval = Number(sec);
 }
-function pickLinkInterval(btn){
-  document.querySelectorAll('#slIntervalRow .connect-btn').forEach(b=>b.classList.remove('primary'));
-  btn.classList.add('primary');
-  subLinkInterval = parseInt(btn.dataset.sec);
-}
 function useMyAddress(){
-  if(!userAddress){ setStatus('slStatus','Connect your wallet first.','err'); return; }
-  $('slTo').value = userAddress;
+  if(!userAddress){ setStatus('subStatus','Connect your wallet first.','err'); return; }
+  $('subTo').value = userAddress;
 }
 
 /* A wallet broadcasts through its own node; this page reads through another.
