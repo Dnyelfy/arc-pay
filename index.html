@@ -1526,9 +1526,14 @@ function boot(){
     fatal(`Configuration incomplete for "${NET.label}" — missing: ${missing.join(', ')}. Fill these in under NETWORKS['${ACTIVE_NETWORK}'] before using this build.`);
     return;
   }
-  readProvider = new ethers.JsonRpcProvider(RPC);
+  /* One call per request. ethers packs concurrent eth_calls into a single
+     JSON-RPC array by default, and this node answers those batches
+     incompletely — the missing entries surface as "missing revert data" and as
+     subscriptions that read back as unreadable. Sending them one at a time
+     costs a few more round trips and returns every row. */
+  readProvider = new ethers.JsonRpcProvider(RPC, undefined, { batchMaxCount: 1, staticNetwork: true });
   iface = new ethers.Interface(ABI);
-  sepoliaProvider = new ethers.JsonRpcProvider(DEST_RPC);
+  sepoliaProvider = new ethers.JsonRpcProvider(DEST_RPC, undefined, { batchMaxCount: 1, staticNetwork: true });
   booted = true;
 
   // Links and copy that depend on the active network.
@@ -2179,7 +2184,7 @@ async function kpPreflight(){
   const c = new ethers.Contract(ARCSUB, KP_ABI, readProvider);
   let maxId = null;
   try{
-    maxId = Number(await c.nextId());
+    maxId = Number(await kpRetry(() => c.nextId()));
     kpLog(`📇 Subscription contract answered nextId() = ${maxId}.`,'ok');
   }catch(e){
     kpLog(`✖ The contract at ${short(ARCSUB)} did not answer nextId(). Without it the agent cannot list subscriptions, so it will never charge anything. Check that this address is the subscriptions contract and that it exposes nextId().`,'err');
@@ -2199,9 +2204,9 @@ async function kpPreflight(){
   for (let id = 1; id < maxId; id++) ids.push(id);
   let live = 0, due = 0, gone = 0, soonest = null;
   const now = Math.floor(Date.now()/1000);
-  await inBatches(ids.slice(0, 200), 10, async id => {
+  await inBatches(ids.slice(0, 200), 5, async id => {
     try{
-      const s = await c.getSub(id);
+      const s = await kpRetry(() => c.getSub(id));
       if (s.active){
         live++;
         const at = Number(s.nextChargeAt);
