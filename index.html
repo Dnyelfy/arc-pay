@@ -1731,16 +1731,39 @@ async function createSub(){
   }catch(e){ setStatus('subStatus','Failed: '+errText(e,90),'err'); }
 }
 
-async function fetchSubs(ids){
+/* One eth_call per subscription, so a wallet with thirty of them hits the RPC
+   thirty times in a few seconds. A public node rate-limits some of those, and
+   the old code turned every failure into null and filtered it away — the row
+   vanished from the list while the subscription was still perfectly alive
+   on-chain. Retry, then fall back to what we already knew, and never drop a
+   row just because one read did not come back. */
+let subsUnread = 0;
+
+async function fetchSubs(ids, prior){
   const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
-  const rows = await inBatches([...ids], 10, async id => {
-    try{
-      const s = await c.getSub(id);
-      return { id: id.toString(), subscriber: s.subscriber, merchant: s.merchant,
-        amount: s.amount, interval: s.interval, nextChargeAt: s.nextChargeAt,
-        active: s.active, label: s.label };
-    }catch{ return null; }
+  const known = new Map((prior || []).map(s => [s.id, s]));
+  let unread = 0;
+
+  const rows = await inBatches([...ids], 5, async id => {
+    const key = id.toString();
+    for(let attempt = 0; attempt < 3; attempt++){
+      try{
+        const s = await c.getSub(id);
+        return { id: key, subscriber: s.subscriber, merchant: s.merchant,
+          amount: s.amount, interval: s.interval, nextChargeAt: s.nextChargeAt,
+          active: s.active, label: s.label };
+      }catch(_){
+        // Back off before trying again; a rate limit clears in a moment.
+        await new Promise(r => setTimeout(r, 250 * (attempt + 1)));
+      }
+    }
+    unread++;
+    // Still nothing. Showing the last known row beats pretending it is gone.
+    const old = known.get(key);
+    return old ? { ...old, stale: true } : null;
   });
+
+  subsUnread += unread;
   return rows.filter(Boolean);
 }
 
@@ -1751,12 +1774,13 @@ function subRow(s, mine){
   const badge = !s.active ? '<span class="badge off">cancelled</span>'
     : due ? '<span class="badge due">due now</span>'
           : `<span class="badge live">next in ${subLeft(s)}</span>`;
+  const staleBadge = s.stale ? '<span class="badge off" title="This row could not be re-read from the node; the values are the last known ones.">not refreshed</span>' : '';
   const btn = !s.active ? ''
     : (!mine && due) ? `<button class="connect-btn primary" onclick="chargeSub('${s.id}')">Charge now</button>`
                      : `<button class="connect-btn" onclick="cancelSub('${s.id}')">Cancel</button>`;
   return `<div class="sub-row${due && s.active ? ' due' : ''}">
     <div class="sr-main">
-      <div class="sr-title">${escHtml(s.label||'subscription')} ${badge}</div>
+      <div class="sr-title">${escHtml(s.label||'subscription')} ${badge} ${staleBadge}</div>
       <div class="sr-meta">#${s.id} · ${who} · every ${intervalName(s.interval)}</div>
     </div>
     <div class="sr-amt">${amt} USDC</div>
@@ -1815,18 +1839,35 @@ async function loadSubs(opts){
     $('myMerchList').innerHTML = skeletons(2);
   }
   const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
+  // The index reads are two more calls that a busy node can refuse. One refusal
+  // used to fail the entire refresh.
+  const withRetry = async fn => {
+    let last;
+    for(let i = 0; i < 3; i++){
+      try{ return await fn(); }
+      catch(e){ last = e; await new Promise(r => setTimeout(r, 300 * (i + 1))); }
+    }
+    throw last;
+  };
   try{
     const who = userAddress;
     const [myIds, merchIds] = await Promise.all([
-      c.listBySubscriber(who), c.listByMerchant(who)
+      withRetry(() => c.listBySubscriber(who)),
+      withRetry(() => c.listByMerchant(who))
     ]);
-    const [mine, merch] = await Promise.all([fetchSubs(myIds), fetchSubs(merchIds)]);
+    subsUnread = 0;
+    // Sequential, not parallel: the two id lists together can be dozens of
+    // calls, and firing them all at once is what gets the node to start
+    // refusing them.
+    const mine = await fetchSubs(myIds, mySubsCache);
+    const merch = await fetchSubs(merchIds, merchSubsCache);
     // The wallet may have changed while these calls were in flight.
     if(who !== userAddress){ subsLoading = false; return; }
     mySubsCache = mine;
     merchSubsCache = merch;
     subsLoadedFor = who;
     renderSubs();
+    if(subsUnread) toast(`${subsUnread} subscription(s) could not be read — showing last known values`);
   }catch(e){
     // A failed read is not evidence that the subscriptions are gone. Keep what
     // is on screen and say the refresh failed.
