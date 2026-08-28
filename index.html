@@ -2067,8 +2067,20 @@ async function kpBal(){
 /* Refresh the cached subscription table: pick up ids created since the last
    pass, and re-read only rows that have come due. Steady state is a single
    nextId() call per tick instead of a few hundred serial getSub() reads. */
+/* The node refuses a read now and then under load, and ethers surfaces that as
+   a call exception. Retrying is the difference between "tick error" in the
+   terminal and an agent that just keeps working. */
+async function kpRetry(fn, tries = 3){
+  let last;
+  for(let i = 0; i < tries; i++){
+    try{ return await fn(); }
+    catch(e){ last = e; await new Promise(r => setTimeout(r, 300 * (i + 1))); }
+  }
+  throw last;
+}
+
 async function kpRefresh(c){
-  const maxId = Number(await c.nextId());
+  const maxId = Number(await kpRetry(() => c.nextId()));
   // nextId is the next unused id and the counter starts at 1, so the live ids
   // are 1 … maxId-1. Track what has been looked at separately from the highest
   // id, or an empty contract re-probes the same id every tick.
@@ -2084,9 +2096,9 @@ async function kpRefresh(c){
   const ids = [...new Set([...fresh, ...stale])];
   if (fresh.length) kpLog(`📇 ${fresh.length} new subscription id(s) discovered (up to #${kpScannedTo}).`);
 
-  await inBatches(ids, 10, async id => {
+  await inBatches(ids, 5, async id => {
     try{
-      const s = await c.getSub(id);
+      const s = await kpRetry(() => c.getSub(id));
       kpSubs.set(id, {
         active: s.active,
         nextChargeAt: Number(s.nextChargeAt),
@@ -2094,7 +2106,11 @@ async function kpRefresh(c){
         merchant: s.merchant,
         label: s.label
       });
-    }catch{ kpSubs.delete(id); }
+    }catch(_){
+      // A read that will not come back is not proof the subscription is gone.
+      // Keep whatever is already cached rather than forgetting a live plan.
+      if(!kpSubs.has(id)) return;
+    }
   });
 }
 
@@ -2130,7 +2146,6 @@ async function kpTick(){
         kpLog(actives.length
           ? `⏸ ${actives.length} active subscription(s), none due yet — next one in ${subLeft({ nextChargeAt: soonest })}. Idling until then.`
           : '⏸ No active subscriptions — idling.');
-        if (actives.length) kpLog('   A monthly plan will not come due for a month. Create a 5-minute plan on the Subscriptions tab to watch a real collection.','warn');
         kpIdleLogged = true;
       }
       return;
