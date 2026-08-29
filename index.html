@@ -1413,15 +1413,21 @@ async function sendRecallable(){
     const rc = await tx.wait();
     setStatus('rcStatus',`✅ Recallable sent — recipient can claim now, you can recall after the window · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Recallable payment sent');
-    loadRecalls();
+    await waitForRead(rc.blockNumber);
+    loadRecalls({ silent: true });
   }catch(e){ setStatus('rcStatus','Failed: ' + errText(e,90),'err'); }
 }
 
 let rcItems = [];
-async function loadRecalls(){
+async function loadRecalls(opts){
+  const silent = !!(opts && opts.silent);
   if(!requireReady()) return;
-  if(!userAddress){ await connect(); if(!userAddress) return; }
-  $('rcList').innerHTML = '<p class="empty"><span class="spin"></span>Reading recallable payments from the chain…</p>' + skeletons(2);
+  if(!userAddress){ if(silent) return; await connect(); if(!userAddress) return; }
+  // Only show the loading state when there is nothing to replace. Blanking a
+  // populated list before every refresh is why sent payments kept vanishing.
+  if(!rcItems.length && !silent){
+    $('rcList').innerHTML = '<p class="empty"><span class="spin"></span>Reading recallable payments from the chain…</p>' + skeletons(2);
+  }
   try{
     const me = userAddress.toLowerCase();
     const c = new ethers.Contract(ARCPAY, ABI, readProvider);
@@ -1430,10 +1436,14 @@ async function loadRecalls(){
     // contract which payments are ours instead of scanning logs and hoping
     // they fall inside the scanned block range.
     const [sentIds, recvIds] = await Promise.all([
-      c.sentBy(userAddress), c.receivedBy(userAddress)
+      retry(() => c.sentBy(userAddress)), retry(() => c.receivedBy(userAddress))
     ]);
     const ids = [...new Set([...sentIds, ...recvIds].map(Number))].sort((a, b) => b - a);
-    if(!ids.length){ $('rcList').innerHTML = '<p class="empty"><b>Nothing here yet</b>Send a recallable payment above and it will appear.</p>'; return; }
+    if(!ids.length){
+      rcItems = [];
+      $('rcList').innerHTML = '<p class="empty"><b>Nothing here yet</b>Send a recallable payment above and it will appear.</p>';
+      return;
+    }
 
     // The note is only in the event, never in storage — fetch it best-effort.
     // A failed or truncated log scan now costs a note, not the payment itself.
@@ -1447,21 +1457,32 @@ async function loadRecalls(){
     }catch(_){}
 
     // Amounts, deadlines and status come from storage, which cannot go stale.
-    rcItems = await inBatches(ids, 10, async id => {
-      const p = await c.rpays(id);
-      return {
-        id,
-        from: p.from, to: p.to,
-        amount: formatNative(p.amount),
-        deadline: Number(p.recallAfter),
-        note: notes.get(id) || '',
-        status: Number(p.status),        // 0 open · 1 claimed · 2 recalled
-        out: p.from.toLowerCase() === me
-      };
+    const known = new Map(rcItems.map(r => [r.id, r]));
+    let unread = 0;
+    const rows = await inBatches(ids, 5, async id => {
+      try{
+        const pmt = await retry(() => c.rpays(id));
+        return {
+          id,
+          from: pmt.from, to: pmt.to,
+          amount: formatNative(pmt.amount),
+          deadline: Number(pmt.recallAfter),
+          note: notes.get(id) || (known.get(id) || {}).note || '',
+          status: Number(pmt.status),        // 0 open · 1 claimed · 2 recalled
+          out: pmt.from.toLowerCase() === me
+        };
+      }catch(_){
+        // Keep the row we already had rather than dropping a real payment.
+        unread++;
+        return known.get(id) || null;
+      }
     });
+    rcItems = rows.filter(Boolean);
     renderRecalls();
+    if(unread) toast(`${unread} payment(s) could not be read — showing last known values`);
   }catch(e){
-    $('rcList').innerHTML = `<p class="empty">Could not read: ${errText(e,80)}</p>`;
+    if(rcItems.length) toast('Refresh failed — showing last known state');
+    else $('rcList').innerHTML = `<p class="empty">Could not read: ${errText(e,80)}</p>`;
   }
 }
 
@@ -1505,7 +1526,8 @@ async function claimPay(id){
   try{
     const c = new ethers.Contract(ARCPAY, ABI, signer);
     const tx = await c.claim(id); toast('⏳ Claiming…');
-    await tx.wait(); toast('✓ Claimed'); loadRecalls();
+    const rc = await tx.wait(); toast('✓ Claimed');
+    await waitForRead(rc.blockNumber); loadRecalls({ silent: true });
   }catch(e){ toast('Claim failed: ' + errText(e,50)); }
 }
 async function recallPay(id){
@@ -1513,7 +1535,8 @@ async function recallPay(id){
   try{
     const c = new ethers.Contract(ARCPAY, ABI, signer);
     const tx = await c.recall(id); toast('⏳ Recalling…');
-    await tx.wait(); toast('✓ Funds recalled'); loadRecalls();
+    const rc = await tx.wait(); toast('✓ Funds recalled');
+    await waitForRead(rc.blockNumber); loadRecalls({ silent: true });
   }catch(e){ toast('Recall failed: ' + errText(e,50)); }
 }
 
@@ -1606,6 +1629,7 @@ let mySubsCache = [];
 let merchSubsCache = [];
 let subsLoadedFor = null;      // address the cache belongs to
 let subsLoading = false;
+let subsAgain = false;
 let subsTimer = null;
 let autoCollectTimer = null;
 
@@ -1623,6 +1647,17 @@ function applyInterval(sec){
 function useMyAddress(){
   if(!userAddress){ setStatus('subStatus','Connect your wallet first.','err'); return; }
   $('subTo').value = userAddress;
+}
+
+/* One refused read should not fail a whole panel. Every chain read on this page
+   goes through here. */
+async function retry(fn, tries = 3){
+  let last;
+  for(let i = 0; i < tries; i++){
+    try{ return await fn(); }
+    catch(e){ last = e; await new Promise(r => setTimeout(r, 300 * (i + 1))); }
+  }
+  throw last;
 }
 
 /* A wallet broadcasts through its own node; this page reads through another.
@@ -1659,7 +1694,9 @@ function intervalName(sec){
 
 async function ensureSubAllowance(minAmount){
   const usdc = new ethers.Contract(USDC_ERC20, ERC20_MIN_ABI, signer);
-  const cur = await usdc.allowance(userAddress, ARCSUB);
+  // A refused allowance read used to abort the subscription before the wallet
+  // was ever asked to sign, which read as a random "missing revert data".
+  const cur = await retry(() => usdc.allowance(userAddress, ARCSUB));
   if (cur >= minAmount) return;
   setStatus('subStatus','Approve USDC for recurring pulls…');
   const tx = await usdc.approve(ARCSUB, ethers.MaxUint256);
@@ -1806,7 +1843,13 @@ async function loadSubs(opts){
     await connect();
     if(!userAddress) return;
   }
-  if (subsLoading) return;
+  if (subsLoading){
+    // A refresh is already in flight. Dropping this one is how a subscription
+    // created right after another went missing until the next timer tick —
+    // remember to run again once the current pass finishes.
+    subsAgain = true;
+    return;
+  }
   subsLoading = true;
   const had = mySubsCache.length || merchSubsCache.length;
   // Skeletons only when there is nothing to replace. Wiping a populated list
@@ -1816,21 +1859,11 @@ async function loadSubs(opts){
     $('myMerchList').innerHTML = skeletons(2);
   }
   const c = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
-  // The index reads are two more calls that a busy node can refuse. One refusal
-  // used to fail the entire refresh.
-  const withRetry = async fn => {
-    let last;
-    for(let i = 0; i < 3; i++){
-      try{ return await fn(); }
-      catch(e){ last = e; await new Promise(r => setTimeout(r, 300 * (i + 1))); }
-    }
-    throw last;
-  };
   try{
     const who = userAddress;
     const [myIds, merchIds] = await Promise.all([
-      withRetry(() => c.listBySubscriber(who)),
-      withRetry(() => c.listByMerchant(who))
+      retry(() => c.listBySubscriber(who)),
+      retry(() => c.listByMerchant(who))
     ]);
     subsUnread = 0;
     // Sequential, not parallel: the two id lists together can be dozens of
@@ -1839,7 +1872,7 @@ async function loadSubs(opts){
     const mine = await fetchSubs(myIds, mySubsCache);
     const merch = await fetchSubs(merchIds, merchSubsCache);
     // The wallet may have changed while these calls were in flight.
-    if(who !== userAddress){ subsLoading = false; return; }
+    if(who !== userAddress) return;
     mySubsCache = mine;
     merchSubsCache = merch;
     subsLoadedFor = who;
@@ -1854,7 +1887,10 @@ async function loadSubs(opts){
       $('myMerchList').innerHTML = '';
       if(!silent) toast('Load failed: '+errText(e,60));
     }
-  }finally{ subsLoading = false; }
+  }finally{
+    subsLoading = false;
+    if(subsAgain){ subsAgain = false; loadSubs({ silent: true }); }
+  }
 }
 
 /* Entering the tab: repaint from state at once, then refresh behind it. */
@@ -2044,20 +2080,8 @@ async function kpBal(){
 /* Refresh the cached subscription table: pick up ids created since the last
    pass, and re-read only rows that have come due. Steady state is a single
    nextId() call per tick instead of a few hundred serial getSub() reads. */
-/* The node refuses a read now and then under load, and ethers surfaces that as
-   a call exception. Retrying is the difference between "tick error" in the
-   terminal and an agent that just keeps working. */
-async function kpRetry(fn, tries = 3){
-  let last;
-  for(let i = 0; i < tries; i++){
-    try{ return await fn(); }
-    catch(e){ last = e; await new Promise(r => setTimeout(r, 300 * (i + 1))); }
-  }
-  throw last;
-}
-
 async function kpRefresh(c){
-  const maxId = Number(await kpRetry(() => c.nextId()));
+  const maxId = Number(await retry(() => c.nextId()));
   // nextId is the next unused id and the counter starts at 1, so the live ids
   // are 1 … maxId-1. Track what has been looked at separately from the highest
   // id, or an empty contract re-probes the same id every tick.
@@ -2075,7 +2099,7 @@ async function kpRefresh(c){
 
   await inBatches(ids, 5, async id => {
     try{
-      const s = await kpRetry(() => c.getSub(id));
+      const s = await retry(() => c.getSub(id));
       kpSubs.set(id, {
         active: s.active,
         nextChargeAt: Number(s.nextChargeAt),
@@ -2184,7 +2208,7 @@ async function kpPreflight(){
   const c = new ethers.Contract(ARCSUB, KP_ABI, readProvider);
   let maxId = null;
   try{
-    maxId = Number(await kpRetry(() => c.nextId()));
+    maxId = Number(await retry(() => c.nextId()));
     kpLog(`📇 Subscription contract answered nextId() = ${maxId}.`,'ok');
   }catch(e){
     kpLog(`✖ The contract at ${short(ARCSUB)} did not answer nextId(). Without it the agent cannot list subscriptions, so it will never charge anything. Check that this address is the subscriptions contract and that it exposes nextId().`,'err');
@@ -2206,7 +2230,7 @@ async function kpPreflight(){
   const now = Math.floor(Date.now()/1000);
   await inBatches(ids.slice(0, 200), 5, async id => {
     try{
-      const s = await kpRetry(() => c.getSub(id));
+      const s = await retry(() => c.getSub(id));
       if (s.active){
         live++;
         const at = Number(s.nextChargeAt);
