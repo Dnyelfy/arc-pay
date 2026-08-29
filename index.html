@@ -1628,8 +1628,9 @@ let subInterval = 2592000;
 let mySubsCache = [];
 let merchSubsCache = [];
 let subsLoadedFor = null;      // address the cache belongs to
-let subsLoading = false;
-let subsAgain = false;
+/* Devam eden yenilemenin sozu. Ikinci bir istek gelirse yeni bir tarama
+   baslatmak yerine bunu bekler. */
+let subsInflight = null;
 let subsTimer = null;
 let autoCollectTimer = null;
 
@@ -1741,7 +1742,7 @@ async function createSub(){
     }
     $('subAmt').value = ''; $('subLabel').value = '';
     await waitForRead(rc.blockNumber);
-    loadSubs({ silent: true });
+    loadSubs({ silent: true, after: true });
   }catch(e){ setStatus('subStatus','Failed: '+errText(e,90),'err'); }
 }
 
@@ -1834,7 +1835,29 @@ function renderSubs(){
     : '<p class="empty"><b>No subscribers yet</b>Share your address with a plan label and they will show up here.</p>';
 }
 
-async function loadSubs(opts){
+/* One pass at a time, and callers wait for it instead of being dropped.
+
+   Routine callers (the 20s timer, entering the tab) join whatever pass is
+   already running. Only a caller that has just written to the chain passes
+   { after: true }: its block landed after the running pass started, so that
+   pass cannot contain it and exactly one follow-up is queued.
+
+   The previous version queued a follow-up for *every* dropped caller. With
+   thirty-odd subscriptions read one call at a time, a pass outlasts the 20s
+   timer, so each pass ended by immediately starting another — a permanent
+   back-to-back scan that the public node answers by rate-limiting everything,
+   including the other tabs that share this provider. */
+function loadSubs(opts){
+  const o = opts || {};
+  if (subsInflight){
+    return o.after ? subsInflight.then(() => loadSubs({ silent: true })) : subsInflight;
+  }
+  subsInflight = doLoadSubs(o);
+  subsInflight.catch(() => {}).then(() => { subsInflight = null; });
+  return subsInflight;
+}
+
+async function doLoadSubs(opts){
   const silent = !!(opts && opts.silent);
   if (!ARCSUB){ if(!silent) toast('Subscription contract not deployed yet'); return; }
   if(!booted) return;
@@ -1843,14 +1866,6 @@ async function loadSubs(opts){
     await connect();
     if(!userAddress) return;
   }
-  if (subsLoading){
-    // A refresh is already in flight. Dropping this one is how a subscription
-    // created right after another went missing until the next timer tick —
-    // remember to run again once the current pass finishes.
-    subsAgain = true;
-    return;
-  }
-  subsLoading = true;
   const had = mySubsCache.length || merchSubsCache.length;
   // Skeletons only when there is nothing to replace. Wiping a populated list
   // to redraw it is what made the rows flicker away on every refresh.
@@ -1887,9 +1902,6 @@ async function loadSubs(opts){
       $('myMerchList').innerHTML = '';
       if(!silent) toast('Load failed: '+errText(e,60));
     }
-  }finally{
-    subsLoading = false;
-    if(subsAgain){ subsAgain = false; loadSubs({ silent: true }); }
   }
 }
 
@@ -1920,7 +1932,7 @@ async function chargeSub(id){
     setStatus('merchStatus',`✓ Charged #${id} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Payment collected');
     await waitForRead(rc.blockNumber);
-    loadSubs({ silent: true });
+    loadSubs({ silent: true, after: true });
   }catch(e){ setStatus('merchStatus','Failed: '+errText(e,90),'err'); }
 }
 
@@ -1932,7 +1944,7 @@ async function cancelSub(id){
     const rc = await tx.wait();
     toast('✓ Subscription cancelled');
     await waitForRead(rc.blockNumber);
-    loadSubs({ silent: true });
+    loadSubs({ silent: true, after: true });
   }catch(e){ toast('Cancel failed: '+errText(e,60)); }
 }
 
@@ -1994,7 +2006,7 @@ function toggleAutoCollect(){
           const rc = await tx.wait();
           toast(`Auto-collected ${due.length} payment(s)`);
           await waitForRead(rc.blockNumber);
-          loadSubs({ silent: true });
+          loadSubs({ silent: true, after: true });
         }
       }catch(e){
         // Silence here meant a merchant could leave this running for hours
