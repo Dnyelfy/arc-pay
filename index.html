@@ -1366,7 +1366,7 @@ async function loadHistory(){
     const me = userAddress.toLowerCase();
     const sig = iface.getEvent('PaymentSent').topicHash;
     const mine = addrTopic(userAddress);
-    const logs = await getLogsFor([[sig, mine, null], [sig, null, mine]]);
+    const logs = await withTimeout(getLogsFor([[sig, mine, null], [sig, null, mine]]), 20000, 'receipt scan');
     const all = parseAll(logs)
       .filter(x => x.ev.name === 'PaymentSent' && (x.ev.args.from.toLowerCase() === me || x.ev.args.to.toLowerCase() === me))
       .sort((a,b)=>b.l.blockNumber - a.l.blockNumber);
@@ -1451,7 +1451,13 @@ async function loadRecalls(opts){
     try{
       const sig = iface.getEvent('RecallableCreated').topicHash;
       const mine = addrTopic(userAddress);
-      for(const { ev } of parseAll(await getLogsFor([[sig, null, mine, null], [sig, null, null, mine]]))){
+      // Bu arama log tarayiciya dusebiliyor ve o istek hic donmeyebiliyor.
+      // Hata yakalaniyordu ama askida kalmak hata degil: liste sonsuza kadar
+      // "Reading recallable payments…" yazisinda kaliyordu. Notlar kozmetik,
+      // odemeler degil — arama 8 saniyede bitmezse notsuz devam ediyoruz.
+      const noteLogs = await withTimeout(
+        getLogsFor([[sig, null, mine, null], [sig, null, null, mine]]), 8000, 'note lookup');
+      for(const { ev } of parseAll(noteLogs)){
         if(ev.name === 'RecallableCreated') notes.set(Number(ev.args.id), ev.args.note);
       }
     }catch(_){}
@@ -1650,12 +1656,25 @@ function useMyAddress(){
   $('subTo').value = userAddress;
 }
 
+/* Cevap vermeyen bir istek, hata veren istekten kotudur: panel spinner'da
+   kalir ve kullanicinin elinde hicbir sey olmaz. Her zincir okumasi burada
+   sureye baglaniyor. */
+function withTimeout(p, ms, what){
+  let t;
+  return Promise.race([
+    Promise.resolve(p),
+    new Promise((_, rej) => {
+      t = setTimeout(() => rej(new Error((what || 'read') + ' timed out after ' + Math.round(ms / 1000) + 's')), ms);
+    })
+  ]).finally(() => clearTimeout(t));
+}
+
 /* One refused read should not fail a whole panel. Every chain read on this page
    goes through here. */
-async function retry(fn, tries = 3){
+async function retry(fn, tries = 3, ms = 12000){
   let last;
   for(let i = 0; i < tries; i++){
-    try{ return await fn(); }
+    try{ return await withTimeout(fn(), ms, 'chain read'); }
     catch(e){ last = e; await new Promise(r => setTimeout(r, 300 * (i + 1))); }
   }
   throw last;
@@ -1694,12 +1713,22 @@ function intervalName(sec){
 }
 
 async function ensureSubAllowance(minAmount){
-  const usdc = new ethers.Contract(USDC_ERC20, ERC20_MIN_ABI, signer);
-  // A refused allowance read used to abort the subscription before the wallet
-  // was ever asked to sign, which read as a random "missing revert data".
-  const cur = await retry(() => usdc.allowance(userAddress, ARCSUB));
-  if (cur >= minAmount) return;
+  /* Bu okuma sayfanin kendi node'undan yapiliyor, cuzdanin node'undan degil.
+     Bir islemin hemen ardindan cuzdanin node'u eth_call'a bos veri
+     donebiliyor; ethers bunu "missing revert data" diye bildiriyor ve arka
+     arkaya acilan ikinci abonelik tam burada dusuyordu. Okuma hic
+     yapilamazsa aboneligi iptal etmek yerine onayi tazeliyoruz — en kotu
+     ihtimalle bir fazla approve, sessiz bir basarisizlik degil. */
+  let cur = null;
+  try{
+    const ro = new ethers.Contract(USDC_ERC20, ERC20_MIN_ABI, readProvider);
+    cur = await retry(() => ro.allowance(userAddress, ARCSUB), 4);
+  }catch(_){
+    setStatus('subStatus','USDC onayi okunamadi — güvenli tarafta kalmak için yeniden onaylıyoruz…');
+  }
+  if (cur !== null && cur >= minAmount) return;
   setStatus('subStatus','Approve USDC for recurring pulls…');
+  const usdc = new ethers.Contract(USDC_ERC20, ERC20_MIN_ABI, signer);
   const tx = await usdc.approve(ARCSUB, ethers.MaxUint256);
   await tx.wait();
 }
@@ -1717,6 +1746,20 @@ async function createSub(){
     await ensureSubAllowance(amount);
     setStatus('subStatus','Confirm subscription — first period is charged now…');
     const c = new ethers.Contract(ARCSUB, SUB_ABI, signer);
+    /* Once kontrata sor. Kontrat gercekten reddediyorsa sebebi burada
+       cozulur; node cevapsiz kaldiysa sebep cikmaz ve islemi durdurmayiz —
+       cuzdan kendi tahminini yapsin. Her iki durumda da kullanici artik
+       "missing revert data" yerine ne oldugunu okuyor. */
+    try{
+      const ro = new ethers.Contract(ARCSUB, SUB_ABI, readProvider);
+      await retry(() => ro.subscribe.staticCall(to, amount, subInterval, label, { from: userAddress }), 2);
+    }catch(pe){
+      const why = pe && (pe.reason || (pe.revert && pe.revert.name));
+      if(why){
+        setStatus('subStatus','Kontrat bu aboneliği reddetti: ' + escHtml(String(why)), 'err');
+        return;
+      }
+    }
     const tx = await c.subscribe(to, amount, subInterval, label);
     const rc = await tx.wait();
     setStatus('subStatus',`✓ Subscribed — ${escHtml(amt)} USDC ${intervalName(subInterval)} · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
