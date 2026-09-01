@@ -321,7 +321,7 @@ body.engaged .hero{display:none;}
       <input id="rcTo" placeholder="0x…" spellcheck="false"/>
       <label for="rcAmt">Amount (USDC)</label>
       <input id="rcAmt" placeholder="1.00" inputmode="decimal"/>
-      <label id="rcWindowLabel">Recall window — you can take it back after</label>
+      <label id="rcWindowLabel">Cancel window — only you can cancel until it closes</label>
       <div class="row" style="margin-top:4px;" role="group" aria-labelledby="rcWindowLabel">
         <button class="preset" data-s="300" onclick="pickWindow(this)">5 min</button>
         <button class="preset active" data-s="3600" onclick="pickWindow(this)">1 hour</button>
@@ -336,7 +336,7 @@ body.engaged .hero{display:none;}
     <div class="card">
       <h2>Your recallable payments</h2>
       <div class="row" style="margin-top:0;"><button class="connect-btn" onclick="loadRecalls()">↻ Load from chain</button></div>
-      <div id="rcList"><p class="empty">Connect & load — outgoing payments show a recall countdown, incoming ones a claim button.</p></div>
+      <div id="rcList"><p class="empty">Connect & load — outgoing payments show a cancel countdown, incoming ones become claimable when it ends.</p></div>
     </div>
   </div>
 
@@ -618,7 +618,7 @@ const NETWORKS = {
     scan: 'https://testnet.arcscan.app',
     native: { name: 'USDC', symbol: 'USDC', decimals: 18 },
     contracts: {
-      pay:        '0x418E2c81b0E90C98780494c62C73452657CA979b', // Pay on Arc payments (V2)
+      pay:        '0xa0185d00ECAE1263282996A4B132949b0aee47E4', // Pay on Arc payments (V3 — cancel window)
       subs:       '0x015f65293c936741588dC03ebDD1A193D62535eC', // Subscriptions
       treasury:   '0xC99f4c415C7d9e2bafDC04C43500131fDb43eA53', // Treasury agent
       usdc:       '0x3600000000000000000000000000000000000000', // USDC (ERC-20 view of native)
@@ -682,7 +682,7 @@ const SCAN = NET.scan;
 const ABI = [
   'function pay(address to, string note) payable',
   'function splitPay(address[] to, string note) payable',
-  'function payRecallable(address to, uint256 recallSeconds, string note) payable returns (uint256)',
+  'function payRecallable(address to, uint256 cancelSeconds, string note) payable returns (uint256)',
   'function claim(uint256 id)',
   'function recall(uint256 id)',
   'function rpays(uint256) view returns (address from, address to, uint256 amount, uint256 recallAfter, uint8 status)',
@@ -691,7 +691,7 @@ const ABI = [
   'function receivedBy(address) view returns (uint256[])',
   'function total() view returns (uint256)',
   'event PaymentSent(address indexed from, address indexed to, uint256 amount, string note)',
-  'event RecallableCreated(uint256 indexed id, address indexed from, address indexed to, uint256 amount, uint256 recallAfter, string note)',
+  'event RecallableCreated(uint256 indexed id, address indexed from, address indexed to, uint256 amount, uint256 claimableAt, string note)',
   'event Claimed(uint256 indexed id, address indexed to, uint256 amount)',
   'event Recalled(uint256 indexed id, address indexed from, uint256 amount)'
 ];
@@ -1411,7 +1411,7 @@ async function sendRecallable(){
     const tx = await c.payRecallable(to, rcWindow, note, { value: parseNative(amt) });
     setStatus('rcStatus','⏳ Sending… ' + short(tx.hash));
     const rc = await tx.wait();
-    setStatus('rcStatus',`✅ Recallable sent — recipient can claim now, you can recall after the window · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
+    setStatus('rcStatus',`✅ Sent — you can cancel until the window closes, then it becomes theirs · <a href="${SCAN}/tx/${rc.hash}" target="_blank" rel="noreferrer">tx ↗</a>`,'ok');
     toast('✓ Recallable payment sent');
     await waitForRead(rc.blockNumber);
     loadRecalls({ silent: true });
@@ -1505,15 +1505,21 @@ function renderRecalls(){
   const now = Math.floor(Date.now()/1000);
   $('rcList').innerHTML = rcItems.map(p=>{
     const left = p.deadline - now;
+    const open = left > 0;   // iptal penceresi hala aciksa true
+    /* Pencere icinde odeme gonderene ait: yalnizca o iptal edebilir. Pencere
+       kapaninca alicinin olur: yalnizca o cekebilir. Her an tam olarak bir
+       tarafin butonu var, ikisinin birden degil ve hicbirinin degil degil. */
     const badge = p.status === 1 ? '<span style="color:var(--green)">claimed ✓</span>'
-                : p.status === 2 ? '<span style="color:var(--amber)">recalled ↩</span>'
+                : p.status === 2 ? '<span style="color:var(--amber)">cancelled ↩</span>'
                 : p.out
-                  ? (left > 0 ? `<span style="color:var(--muted)">recall in <b style="color:var(--text)">${fmtLeft(left)}</b></span>` : '<span style="color:var(--amber)">recall window open</span>')
-                  : '<span style="color:var(--green)">claimable now</span>';
+                  ? (open ? `<span style="color:var(--amber)">cancel within <b style="color:var(--text)">${fmtLeft(left)}</b></span>`
+                          : '<span style="color:var(--muted)">theirs now — cancel window closed</span>')
+                  : (open ? `<span style="color:var(--muted)">claimable in <b style="color:var(--text)">${fmtLeft(left)}</b></span>`
+                          : '<span style="color:var(--green)">claimable now</span>');
     const action = p.status !== 0 ? ''
                  : p.out
-                   ? (left <= 0 ? `<button class="connect-btn" onclick="recallPay(${p.id})">↩ Recall funds</button>` : '')
-                   : `<button class="connect-btn primary" onclick="claimPay(${p.id})">Claim ${Number(p.amount).toFixed(4)} USDC</button>`;
+                   ? (open ? `<button class="connect-btn" onclick="recallPay(${p.id})">↩ Cancel payment</button>` : '')
+                   : (open ? '' : `<button class="connect-btn primary" onclick="claimPay(${p.id})">Claim ${Number(p.amount).toFixed(4)} USDC</button>`);
     return `<div class="receipt">
       <div class="r-amt" style="color:${p.status===2?'var(--amber)':p.out?'var(--text)':'var(--green)'}">${p.out?'−':'+'}${Number(p.amount).toFixed(4)} USDC</div>
       <div class="r-sep"></div>
